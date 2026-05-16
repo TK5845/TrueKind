@@ -1,0 +1,159 @@
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background: rgb(248, 245, 242);
+  color: rgb(17, 17, 17);
+  font-family: Arial, sans-serif;
+}
+
+a {
+  color: inherit;
+}
+
+img,
+audio,
+input,
+select,
+textarea,
+button {
+  max-width: 100%;
+}
+
+.tk-page-main * {
+  min-width: 0;
+}
+
+@media (max-width: 900px) {
+  .tk-responsive-two-column {
+    grid-template-columns: 1fr !important;
+    gap: 18px !important;
+  }
+
+  .tk-conversation-sidebar {
+    max-height: none !important;
+  }
+}
+
+@media (max-width: 720px) {
+  .tk-app-header-inner {
+    padding: 14px 16px 12px !important;
+    gap: 12px !important;
+  }
+
+  .tk-app-top-row {
+    align-items: stretch !important;
+    gap: 10px !important;
+  }
+
+  .tk-app-brand {
+    padding: 12px 16px !important;
+  }
+
+  .tk-app-actions {
+    width: 100% !important;
+    justify-content: flex-start !important;
+    gap: 8px !important;
+  }
+
+  .tk-app-actions > * {
+    min-height: 42px !important;
+    white-space: nowrap;
+  }
+
+  .tk-app-nav {
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    padding-bottom: 2px !important;
+    scrollbar-width: none;
+  }
+
+  .tk-app-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .tk-app-main {
+    padding: 22px 16px 56px !important;
+  }
+
+  .tk-page-main {
+    gap: 20px !important;
+  }
+
+  .tk-hero-card,
+  .tk-panel-card {
+    padding: 22px !important;
+    border-radius: 26px !important;
+  }
+
+  .tk-page-main h1 {
+    font-size: clamp(34px, 10vw, 46px) !important;
+    line-height: 1.05 !important;
+  }
+
+  .tk-page-main h2 {
+    font-size: clamp(28px, 8vw, 36px) !important;
+  }
+
+  .tk-page-main p {
+    font-size: 17px !important;
+  }
+
+  .tk-action-row {
+    gap: 8px !important;
+  }
+
+  .tk-action-row > a,
+  .tk-action-row > button,
+  .tk-action-row > label {
+    flex: 1 1 180px !important;
+    text-align: center !important;
+    justify-content: center !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .tk-profile-form-grid,
+  .tk-profile-favorites-grid,
+  .tk-message-input-row,
+  .tk-match-detail-header,
+  .tk-message-detail-header,
+  .tk-conversation-card-grid,
+  .tk-match-card-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .tk-message-bubble-row {
+    max-width: 92% !important;
+  }
+
+  .tk-message-detail-header,
+  .tk-match-detail-header {
+    align-items: start !important;
+  }
+}
+
+@media (max-width: 520px) {
+  .tk-app-actions > * {
+    flex: 1 1 calc(50% - 8px) !important;
+    justify-content: center !important;
+    min-width: 0 !important;
+    text-align: center !important;
+  }
+
+  .tk-panel-card,
+  .tk-hero-card {
+    padding: 18px !important;
+  }
+
+  .tk-page-main {
+    gap: 16px !important;
+  }
+}
