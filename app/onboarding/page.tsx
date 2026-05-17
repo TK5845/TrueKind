@@ -160,7 +160,7 @@ export default function OnboardingPage() {
       },
       {
         title: "6. Fortsätt till matchningar och samtal",
-        text: "När du hittar någon intressant går du vidare till matchlista och meddelanden.",
+        text: "När du gillar någon i Discover sparas personen i matchlistan och kan öppnas som samtal.",
         href: "/matches",
         cta: "Se matchlista",
         done: false,

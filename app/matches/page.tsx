@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "../../utils/supabase/client";
@@ -22,7 +22,10 @@ import {
   normalizeMatchId,
   type CanonicalMatch,
 } from "../lib/match-model";
-import { loadStoredMatchSource } from "../lib/match-db";
+import {
+  MATCH_STATE_UPDATED_EVENT,
+  loadStoredMatchSource,
+} from "../lib/match-db";
 
 type LocalProfile = {
   name?: string;
@@ -153,6 +156,7 @@ function MatchImage({
 function MatchesContent() {
   const searchParams = useSearchParams();
   const queryMatchId = getQueryMatchId(searchParams.get("match"));
+  const appliedQueryMatchIdRef = useRef<string | null>(queryMatchId);
   const [myProfile, setMyProfile] = useState<LocalProfile | null>(null);
   const [conversationViews, setConversationViews] = useState<ConversationView[]>(
     () => getDefaultConversationViews([])
@@ -161,6 +165,7 @@ function MatchesContent() {
     useState<CanonicalMatch[]>([]);
   const [authState, setAuthState] = useState<AuthState>("unknown");
   const [selectedId, setSelectedId] = useState<string | null>(queryMatchId);
+  const [hasUserSelectedMatch, setHasUserSelectedMatch] = useState(false);
   const matches = useMemo(
     () => buildMatchViewsFromSource(candidateMatches, conversationViews),
     [candidateMatches, conversationViews]
@@ -172,15 +177,23 @@ function MatchesContent() {
     Promise.resolve().then(() => {
       if (!mounted) return;
 
-      if (queryMatchId) {
+      if (queryMatchId && appliedQueryMatchIdRef.current !== queryMatchId) {
+        appliedQueryMatchIdRef.current = queryMatchId;
         setSelectedId(queryMatchId);
+        setHasUserSelectedMatch(false);
         return;
+      }
+
+      if (!queryMatchId && appliedQueryMatchIdRef.current) {
+        appliedQueryMatchIdRef.current = null;
+        setHasUserSelectedMatch(false);
       }
 
       if (!matches[0]) return;
 
       if (
         !selectedId ||
+        (!queryMatchId && !hasUserSelectedMatch) ||
         !matches.some((match) => match.match_id === selectedId)
       ) {
         setSelectedId(matches[0].match_id);
@@ -190,7 +203,7 @@ function MatchesContent() {
     return () => {
       mounted = false;
     };
-  }, [matches, queryMatchId, selectedId]);
+  }, [matches, queryMatchId, selectedId, hasUserSelectedMatch]);
 
   useEffect(() => {
     let mounted = true;
@@ -265,10 +278,15 @@ function MatchesContent() {
       void hydrateConversationPreviews();
     }
 
+    function onMatchStateUpdated() {
+      void hydrateConversationPreviews();
+    }
+
     window.addEventListener(
       MESSAGE_READ_STATE_UPDATED_EVENT,
       onReadStateUpdated
     );
+    window.addEventListener(MATCH_STATE_UPDATED_EVENT, onMatchStateUpdated);
 
     const {
       data: { subscription },
@@ -285,6 +303,7 @@ function MatchesContent() {
         MESSAGE_READ_STATE_UPDATED_EVENT,
         onReadStateUpdated
       );
+      window.removeEventListener(MATCH_STATE_UPDATED_EVENT, onMatchStateUpdated);
       subscription.unsubscribe();
     };
   }, []);
@@ -399,7 +418,10 @@ function MatchesContent() {
               return (
                 <button
                   key={match.match_id}
-                  onClick={() => setSelectedId(match.match_id)}
+                  onClick={() => {
+                    setSelectedId(match.match_id);
+                    setHasUserSelectedMatch(true);
+                  }}
                   style={{
                     textAlign: "left",
                     border: isActive
@@ -446,7 +468,8 @@ function MatchesContent() {
                   Inga kontakter ännu
                 </div>
                 <div style={{ color: "#5f5752", fontSize: 15, lineHeight: 1.7 }}>
-                  När du har matchningar visas de här i en lugn lista.
+                  Gilla någon i Discover så dyker personen upp här med nästa
+                  steg till samtal.
                 </div>
                 <Link href="/discover" style={actionLinkStyle()}>
                   Gå till Discover
@@ -558,8 +581,8 @@ function MatchesContent() {
                 Ingen matchning vald
               </div>
               <div style={{ color: "#5f5752", fontSize: 17, lineHeight: 1.8 }}>
-                När det finns en matchning kan du välja den i listan och öppna
-                samtalet härifrån.
+                Gilla en profil i Discover först. Då sparas matchningen här och
+                du kan öppna samtalet direkt.
               </div>
               <Link href="/discover" style={actionLinkStyle(true)}>
                 Gå till Discover

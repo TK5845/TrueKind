@@ -306,9 +306,14 @@ export function buildConversationViews(
   const dbMessages = rows
     .map((row) => normalizeMessage(row))
     .filter((message): message is Message => Boolean(message));
+  const matchIds = new Set(matches.map((match) => match.match_id));
+  const demoMatchIds = new Set(DEMO_MATCHES.map((match) => match.match_id));
   const includeSeedMessages =
-    options.includeSeedMessages ?? matches === DEMO_MATCHES;
-  const seedMessages = includeSeedMessages ? BASE_MESSAGES : [];
+    options.includeSeedMessages ??
+    matches.some((match) => demoMatchIds.has(match.match_id));
+  const seedMessages = includeSeedMessages
+    ? BASE_MESSAGES.filter((message) => matchIds.has(message.match_id))
+    : [];
 
   for (const message of [...seedMessages, ...dbMessages]) {
     const messages = grouped.get(message.match_id) ?? [];

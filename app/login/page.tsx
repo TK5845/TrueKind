@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { formatAuthError } from "../lib/auth-error";
 import { createClient } from "../../utils/supabase/client";
+import { getSupabaseConfigIssue } from "../../utils/supabase/env";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -14,7 +16,6 @@ export default function LoginPage() {
 
   useEffect(() => {
     let mounted = true;
-    const supabase = createClient();
 
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
@@ -22,6 +23,19 @@ export default function LoginPage() {
         setStatus("Du är utloggad.");
       }
     }
+
+    const configIssue = getSupabaseConfigIssue();
+
+    if (configIssue) {
+      setStatus(configIssue);
+      setHasSession(false);
+      setIsCheckingSession(false);
+      return () => {
+        mounted = false;
+      };
+    }
+
+    const supabase = createClient();
 
     async function checkSession() {
       try {
@@ -63,6 +77,13 @@ export default function LoginPage() {
     setStatus("");
 
     try {
+      const configIssue = getSupabaseConfigIssue();
+
+      if (configIssue) {
+        setStatus(configIssue);
+        return;
+      }
+
       const supabase = createClient();
 
       const { error } = await supabase.auth.signInWithPassword({
@@ -71,14 +92,16 @@ export default function LoginPage() {
       });
 
       if (error) {
-        setStatus("E-post eller lösenord stämmer inte.");
+        console.error("Login failed", error);
+        setStatus(formatAuthError(error, "Det gick inte att logga in just nu."));
         return;
       }
 
       setStatus("Du är inloggad. Vi öppnar Discover...");
       window.location.href = "/discover";
-    } catch {
-      setStatus("Det gick inte att logga in just nu.");
+    } catch (error) {
+      console.error("Login failed", error);
+      setStatus(formatAuthError(error, "Det gick inte att logga in just nu."));
     } finally {
       setIsSubmitting(false);
     }

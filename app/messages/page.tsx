@@ -25,7 +25,10 @@ import {
   normalizeMatchId,
   type CanonicalMatch,
 } from "../lib/match-model";
-import { loadStoredMatchSource } from "../lib/match-db";
+import {
+  MATCH_STATE_UPDATED_EVENT,
+  loadStoredMatchSource,
+} from "../lib/match-db";
 
 type LocalProfile = {
   name?: string;
@@ -233,10 +236,21 @@ function MessagesContent() {
       setMyProfile(readLocalProfile());
     }
 
+    function onMatchStateUpdated() {
+      void loadMessagesForCurrentUser().then((next) => {
+        if (mounted) {
+          setAuthState(next.userId ? "signed-in" : "signed-out");
+          setCandidateMatches(next.candidateMatches);
+          setConversations(next.conversations);
+        }
+      });
+    }
+
     window.addEventListener(
       PROFILE_UPDATED_EVENT,
       onProfileUpdated as EventListener
     );
+    window.addEventListener(MATCH_STATE_UPDATED_EVENT, onMatchStateUpdated);
 
     const {
       data: { subscription },
@@ -278,6 +292,7 @@ function MessagesContent() {
         PROFILE_UPDATED_EVENT,
         onProfileUpdated as EventListener
       );
+      window.removeEventListener(MATCH_STATE_UPDATED_EVENT, onMatchStateUpdated);
       subscription.unsubscribe();
     };
   }, []);
@@ -804,6 +819,9 @@ function MessagesContent() {
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 <Link href="/discover" style={{ display: "inline-block", padding: "11px 14px", borderRadius: 12, border: "1px solid rgba(208,198,191,0.95)", textDecoration: "none", color: "#111", background: "white", fontSize: 14 }}>
                   Till discover
+                </Link>
+                <Link href="/matches" style={{ display: "inline-block", padding: "11px 14px", borderRadius: 12, border: "1px solid rgba(208,198,191,0.95)", textDecoration: "none", color: "#111", background: "white", fontSize: 14 }}>
+                  Till matchlista
                 </Link>
                 <Link href="/profile" style={{ display: "inline-block", padding: "11px 14px", borderRadius: 12, border: "1px solid rgba(208,198,191,0.95)", textDecoration: "none", color: "#111", background: "white", fontSize: 14 }}>
                   Till profil

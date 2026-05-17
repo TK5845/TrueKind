@@ -2,7 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "../../utils/supabase/client";
-import { loadStoredMatchSource } from "../lib/match-db";
+import {
+  MATCH_STATE_UPDATED_EVENT,
+  loadStoredMatchSource,
+} from "../lib/match-db";
 
 export default function MatchBadge() {
   const [hasSession, setHasSession] = useState(false);
@@ -40,6 +43,12 @@ export default function MatchBadge() {
 
     void hydrate();
 
+    function onMatchStateUpdated() {
+      void hydrate();
+    }
+
+    window.addEventListener(MATCH_STATE_UPDATED_EVENT, onMatchStateUpdated);
+
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -49,6 +58,7 @@ export default function MatchBadge() {
 
     return () => {
       mounted = false;
+      window.removeEventListener(MATCH_STATE_UPDATED_EVENT, onMatchStateUpdated);
       subscription.unsubscribe();
     };
   }, []);

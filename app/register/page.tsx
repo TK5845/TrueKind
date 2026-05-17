@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { formatAuthError } from "../lib/auth-error";
 import { createClient } from "../../utils/supabase/client";
+import { getSupabaseConfigIssue } from "../../utils/supabase/env";
 
 export default function RegisterPage() {
   const [firstName, setFirstName] = useState("");
@@ -16,6 +18,17 @@ export default function RegisterPage() {
 
   useEffect(() => {
     let mounted = true;
+    const configIssue = getSupabaseConfigIssue();
+
+    if (configIssue) {
+      setStatus(configIssue);
+      setHasSession(false);
+      setIsCheckingSession(false);
+      return () => {
+        mounted = false;
+      };
+    }
+
     const supabase = createClient();
 
     async function checkSession() {
@@ -81,6 +94,13 @@ export default function RegisterPage() {
     setStatus("");
 
     try {
+      const configIssue = getSupabaseConfigIssue();
+
+      if (configIssue) {
+        setStatus(configIssue);
+        return;
+      }
+
       const supabase = createClient();
 
       const redirectUrl =
@@ -100,9 +120,8 @@ export default function RegisterPage() {
       });
 
       if (error) {
-        setStatus(
-          "Kontot kunde inte skapas just nu. Kontrollera uppgifterna och försök igen."
-        );
+        console.error("Register failed", error);
+        setStatus(formatAuthError(error, "Kontot kunde inte skapas just nu."));
         return;
       }
 
@@ -113,8 +132,9 @@ export default function RegisterPage() {
       setEmail("");
       setPassword("");
       setConfirmPassword("");
-    } catch {
-      setStatus("Kontot kunde inte skapas just nu.");
+    } catch (error) {
+      console.error("Register failed", error);
+      setStatus(formatAuthError(error, "Kontot kunde inte skapas just nu."));
     } finally {
       setIsSubmitting(false);
     }

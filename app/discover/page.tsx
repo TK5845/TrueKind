@@ -26,6 +26,11 @@ import {
   type CanonicalMatch,
 } from "../lib/match-model";
 import {
+  loadStoredMatchSource,
+  readStoredLikedMatchIds,
+  saveLikedMatch,
+} from "../lib/match-db";
+import {
   type CandidateSource,
   loadStoredDiscoverCandidates,
 } from "../lib/discover-candidate-db";
@@ -182,6 +187,13 @@ export default function DiscoverPage() {
   const [candidateSource, setCandidateSource] =
     useState<DiscoverSource>("pending");
   const [candidateMatches, setCandidateMatches] = useState<CanonicalMatch[]>([]);
+  const [activeUserId, setActiveUserId] = useState<string | null>(null);
+  const [likedMatchIds, setLikedMatchIds] = useState<Set<string>>(
+    () => new Set()
+  );
+  const [pendingLikeId, setPendingLikeId] = useState<string | null>(null);
+  const [lastLikedMatchId, setLastLikedMatchId] = useState<string | null>(null);
+  const [likeStatus, setLikeStatus] = useState("");
 
   useEffect(() => {
     let mounted = true;
@@ -202,8 +214,11 @@ export default function DiscoverPage() {
 
       const session = sessionResult?.data.session ?? null;
       setAuthState(session ? "signed-in" : "signed-out");
+      setActiveUserId(session?.user.id ?? null);
 
       if (session) {
+        setLikedMatchIds(readStoredLikedMatchIds(session.user.id));
+
         const candidateResult = await withTimeout(
           loadStoredDiscoverCandidates(supabase, session.user.id),
           2500
@@ -217,6 +232,10 @@ export default function DiscoverPage() {
           loadConversationViews(supabase, session.user.id, nextCandidateMatches),
           2500
         );
+        const matchResult = await withTimeout(
+          loadStoredMatchSource(supabase, session.user.id),
+          2500
+        );
 
         if (!mounted) return;
 
@@ -226,6 +245,12 @@ export default function DiscoverPage() {
 
         setCandidateMatches(nextCandidateMatches);
         setCandidateSource(hasBackendCandidateSource ? "backend" : "demo");
+        setLikedMatchIds(
+          new Set([
+            ...readStoredLikedMatchIds(session.user.id),
+            ...((matchResult?.matches ?? []).map((match) => match.match_id)),
+          ])
+        );
       }
 
       if (!session || hasProfileContent(localProfile)) return;
@@ -265,10 +290,14 @@ export default function DiscoverPage() {
     } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!mounted) return;
       setAuthState(session ? "signed-in" : "signed-out");
+      setActiveUserId(session?.user.id ?? null);
       if (!session) {
         setProfile(emptyProfile);
         setCandidateMatches([]);
         setCandidateSource("pending");
+        setLikedMatchIds(new Set());
+        setLastLikedMatchId(null);
+        setLikeStatus("");
       }
     });
 
@@ -282,6 +311,46 @@ export default function DiscoverPage() {
       subscription.unsubscribe();
     };
   }, []);
+
+  async function handleLike(candidate: CanonicalMatch) {
+    if (pendingLikeId) return;
+
+    if (!activeUserId) {
+      setLikeStatus("Logga in för att gilla en profil.");
+      return;
+    }
+
+    if (likedMatchIds.has(candidate.match_id)) {
+      setLastLikedMatchId(candidate.match_id);
+      setLikeStatus(`${candidate.name} finns redan i matchlistan.`);
+      return;
+    }
+
+    setPendingLikeId(candidate.match_id);
+    setLikeStatus("");
+
+    try {
+      const supabase = createClient();
+      const result = await saveLikedMatch(supabase, activeUserId, candidate);
+
+      if (!result.ok) {
+        setLikeStatus("Kunde inte spara gillningen just nu.");
+        return;
+      }
+
+      setLikedMatchIds((current) => {
+        const next = new Set(current);
+        next.add(candidate.match_id);
+        return next;
+      });
+      setLastLikedMatchId(candidate.match_id);
+      setLikeStatus(`${candidate.name} är sparad i matchlistan.`);
+    } catch {
+      setLikeStatus("Kunde inte spara gillningen just nu.");
+    } finally {
+      setPendingLikeId(null);
+    }
+  }
 
   if (authState === "signed-out") {
     return (
@@ -497,6 +566,37 @@ export default function DiscoverPage() {
           </p>
         </div>
 
+        {likeStatus ? (
+          <div
+            style={{
+              ...emptyStateStyle(),
+              padding: 16,
+              borderRadius: 18,
+              color: "#3e3733",
+              fontSize: 15,
+              lineHeight: 1.6,
+            }}
+          >
+            <div>{likeStatus}</div>
+            {lastLikedMatchId ? (
+              <div className="tk-action-row" style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                <Link
+                  href={`/matches?match=${lastLikedMatchId}`}
+                  style={actionLinkStyle(true)}
+                >
+                  Visa i matchlistan
+                </Link>
+                <Link
+                  href={`/messages?match=${lastLikedMatchId}`}
+                  style={actionLinkStyle()}
+                >
+                  Öppna samtal
+                </Link>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+
         <div
           style={{
             display: "grid",
@@ -505,7 +605,10 @@ export default function DiscoverPage() {
           }}
         >
           {discoverCandidates.length ? (
-            discoverCandidates.map((candidate) => (
+            discoverCandidates.map((candidate) => {
+              const isLiked = likedMatchIds.has(candidate.match_id);
+
+              return (
             <article
               key={candidate.match_id}
               style={{
@@ -623,39 +726,90 @@ export default function DiscoverPage() {
                 </div>
 
                 <div className="tk-action-row" style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                  <Link
-                    href={`/matches?match=${candidate.match_id}`}
+                  <button
+                    type="button"
+                    onClick={() => void handleLike(candidate)}
+                    disabled={
+                      isLiked ||
+                      pendingLikeId === candidate.match_id
+                    }
                     style={{
                       display: "inline-block",
                       padding: "12px 14px",
-                      background: "#111",
-                      color: "white",
+                      background: isLiked
+                        ? "rgba(255,255,255,0.92)"
+                        : "#111",
+                      color: isLiked
+                        ? "#111"
+                        : "white",
                       borderRadius: 12,
+                      border: isLiked
+                        ? "1px solid rgba(208,198,191,0.95)"
+                        : "1px solid #111",
                       textDecoration: "none",
                       fontWeight: 700,
+                      cursor:
+                        isLiked ||
+                        pendingLikeId === candidate.match_id
+                          ? "default"
+                          : "pointer",
+                      opacity: pendingLikeId === candidate.match_id ? 0.7 : 1,
                     }}
                   >
-                    Visa matchning
-                  </Link>
+                    {isLiked
+                      ? "Gillad"
+                      : pendingLikeId === candidate.match_id
+                        ? "Sparar..."
+                        : "Gilla"}
+                  </button>
 
-                  <Link
-                    href={`/messages?match=${candidate.match_id}`}
-                    style={{
-                      display: "inline-block",
-                      padding: "12px 14px",
-                      borderRadius: 12,
-                      border: "1px solid rgba(208,198,191,0.95)",
-                      textDecoration: "none",
-                      color: "#111",
-                      background: "white",
-                    }}
-                  >
-                    Öppna samtal
-                  </Link>
+                  {isLiked ? (
+                    <>
+                      <Link
+                        href={`/matches?match=${candidate.match_id}`}
+                        style={{
+                          display: "inline-block",
+                          padding: "12px 14px",
+                          background: "#111",
+                          color: "white",
+                          borderRadius: 12,
+                          textDecoration: "none",
+                          fontWeight: 700,
+                        }}
+                      >
+                        Visa matchning
+                      </Link>
+
+                      <Link
+                        href={`/messages?match=${candidate.match_id}`}
+                        style={{
+                          display: "inline-block",
+                          padding: "12px 14px",
+                          borderRadius: 12,
+                          border: "1px solid rgba(208,198,191,0.95)",
+                          textDecoration: "none",
+                          color: "#111",
+                          background: "white",
+                        }}
+                      >
+                        Öppna samtal
+                      </Link>
+                    </>
+                  ) : (
+                    <span
+                      style={{
+                        ...pillStyle(),
+                        alignSelf: "center",
+                      }}
+                    >
+                      Gilla för att lägga till i matchlistan
+                    </span>
+                  )}
                 </div>
               </div>
             </article>
-            ))
+              );
+            })
           ) : (
             <div style={{ ...emptyStateStyle(), gridColumn: "1 / -1" }}>
               <div

@@ -487,6 +487,21 @@ function VoiceContent() {
           >
             Till profil
           </Link>
+
+          <Link
+            href="/discover"
+            style={{
+              display: "inline-block",
+              padding: "15px 20px",
+              borderRadius: 14,
+              border: "1px solid rgba(208,198,191,0.95)",
+              textDecoration: "none",
+              color: "#111",
+              background: "white",
+            }}
+          >
+            Till discover
+          </Link>
         </div>
       </section>
     </main>
