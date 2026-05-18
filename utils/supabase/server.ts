@@ -1,9 +1,16 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
-import { getSupabaseConfig } from "./env";
+import { createDisabledSupabaseClient } from "./disabled-client";
+import { getSupabaseConfig, getSupabaseConfigIssue } from "./env";
 
 export async function createClient() {
   const cookieStore = await cookies();
+  const issue = getSupabaseConfigIssue();
+
+  if (issue) {
+    return createDisabledSupabaseClient(issue);
+  }
+
   const { url, key } = getSupabaseConfig();
 
   return createServerClient(

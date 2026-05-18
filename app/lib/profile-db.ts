@@ -164,7 +164,9 @@ export async function upsertCurrentUserProfile(input: DbProfileInput) {
       updated_at: new Date().toISOString(),
     };
 
-    const { error } = await supabase.from("profiles").upsert(payload);
+    const { error } = await supabase
+      .from("profiles")
+      .upsert(payload, { onConflict: "id" });
 
     return { error: error ?? null };
   } catch (error) {

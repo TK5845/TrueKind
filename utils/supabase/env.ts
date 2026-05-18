@@ -19,6 +19,20 @@ function readSupabaseEnv() {
   };
 }
 
+function looksLikeSupabaseUrl(url: string) {
+  if (!url) return false;
+
+  try {
+    const parsed = new URL(url);
+    return (
+      (parsed.protocol === "https:" || parsed.protocol === "http:") &&
+      Boolean(parsed.hostname)
+    );
+  } catch {
+    return false;
+  }
+}
+
 function looksLikeSupabasePublicKey(key: string) {
   if (!key) return false;
   if (key.startsWith("sb_publishable_")) return true;
@@ -28,11 +42,10 @@ function looksLikeSupabasePublicKey(key: string) {
 
 export function getSupabaseConfig() {
   const env = readSupabaseEnv();
+  const issue = getSupabaseConfigIssue();
 
-  if (!env.url || !env.key) {
-    throw new Error(
-      `Missing Supabase environment variables. Set ${SUPABASE_URL_ENV} and ${SUPABASE_PUBLISHABLE_KEY_ENV} in .env.local.`
-    );
+  if (issue) {
+    throw new Error(issue);
   }
 
   return {
@@ -48,12 +61,12 @@ export function getSupabaseConfigIssue() {
     return `Supabase-adressen saknas i .env.local (${SUPABASE_URL_ENV}).`;
   }
 
-  if (!env.key) {
-    return `Supabase-nyckeln saknas i .env.local (${SUPABASE_PUBLISHABLE_KEY_ENV}).`;
+  if (!looksLikeSupabaseUrl(env.url)) {
+    return `Supabase-adressen i .env.local ser fel ut. Kontrollera ${SUPABASE_URL_ENV} och starta om appen.`;
   }
 
-  if (!env.hasPublishableKey && env.hasAnonKey) {
-    return "";
+  if (!env.key) {
+    return `Supabase-nyckeln saknas i .env.local (${SUPABASE_PUBLISHABLE_KEY_ENV}).`;
   }
 
   if (!looksLikeSupabasePublicKey(env.key)) {
@@ -61,4 +74,8 @@ export function getSupabaseConfigIssue() {
   }
 
   return "";
+}
+
+export function isSupabaseConfigured() {
+  return !getSupabaseConfigIssue();
 }

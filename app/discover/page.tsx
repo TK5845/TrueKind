@@ -26,9 +26,11 @@ import {
   type CanonicalMatch,
 } from "../lib/match-model";
 import {
+  MATCH_STATE_UPDATED_EVENT,
   loadStoredMatchSource,
   readStoredLikedMatchIds,
   saveLikedMatch,
+  updateLikedMatchStatus,
 } from "../lib/match-db";
 import {
   type CandidateSource,
@@ -78,6 +80,10 @@ function saveLocalProfile(profile: LocalProfile) {
 
 function safeList(value?: string[]) {
   return Array.isArray(value) ? value.filter(Boolean) : [];
+}
+
+function isPlayableVideoReference(value?: string) {
+  return Boolean(value && /^(https?:|blob:)/i.test(value.trim()));
 }
 
 function hasProfileContent(profile: LocalProfile | null) {
@@ -225,9 +231,12 @@ export default function DiscoverPage() {
         );
         const hasBackendCandidateSource =
           candidateResult?.source === "backend";
+        const hasDemoCandidateFallback = candidateResult?.source === "demo";
         const nextCandidateMatches = hasBackendCandidateSource
           ? candidateResult.candidates
-          : DEMO_MATCHES;
+          : hasDemoCandidateFallback
+            ? DEMO_MATCHES
+            : [];
         const messageResult = await withTimeout(
           loadConversationViews(supabase, session.user.id, nextCandidateMatches),
           2500
@@ -244,7 +253,13 @@ export default function DiscoverPage() {
         }
 
         setCandidateMatches(nextCandidateMatches);
-        setCandidateSource(hasBackendCandidateSource ? "backend" : "demo");
+        setCandidateSource(
+          hasBackendCandidateSource
+            ? "backend"
+            : hasDemoCandidateFallback
+              ? "demo"
+              : "pending"
+        );
         setLikedMatchIds(
           new Set([
             ...readStoredLikedMatchIds(session.user.id),
@@ -321,8 +336,36 @@ export default function DiscoverPage() {
     }
 
     if (likedMatchIds.has(candidate.match_id)) {
-      setLastLikedMatchId(candidate.match_id);
-      setLikeStatus(`${candidate.name} finns redan i matchlistan.`);
+      setPendingLikeId(candidate.match_id);
+      setLikeStatus("");
+
+      try {
+        const supabase = createClient();
+        const result = await updateLikedMatchStatus(
+          supabase,
+          activeUserId,
+          candidate,
+          "hidden"
+        );
+
+        if (!result.ok) {
+          setLikeStatus("Kunde inte ändra gillningen just nu.");
+          return;
+        }
+
+        setLikedMatchIds((current) => {
+          const next = new Set(current);
+          next.delete(candidate.match_id);
+          return next;
+        });
+        setLastLikedMatchId(null);
+        setLikeStatus(`${candidate.name} är borttagen från matchlistan.`);
+        window.dispatchEvent(new Event(MATCH_STATE_UPDATED_EVENT));
+      } catch {
+        setLikeStatus("Kunde inte ändra gillningen just nu.");
+      } finally {
+        setPendingLikeId(null);
+      }
       return;
     }
 
@@ -345,6 +388,7 @@ export default function DiscoverPage() {
       });
       setLastLikedMatchId(candidate.match_id);
       setLikeStatus(`${candidate.name} är sparad i matchlistan.`);
+      window.dispatchEvent(new Event(MATCH_STATE_UPDATED_EVENT));
     } catch {
       setLikeStatus("Kunde inte spara gillningen just nu.");
     } finally {
@@ -729,10 +773,7 @@ export default function DiscoverPage() {
                   <button
                     type="button"
                     onClick={() => void handleLike(candidate)}
-                    disabled={
-                      isLiked ||
-                      pendingLikeId === candidate.match_id
-                    }
+                    disabled={pendingLikeId === candidate.match_id}
                     style={{
                       display: "inline-block",
                       padding: "12px 14px",
@@ -749,7 +790,6 @@ export default function DiscoverPage() {
                       textDecoration: "none",
                       fontWeight: 700,
                       cursor:
-                        isLiked ||
                         pendingLikeId === candidate.match_id
                           ? "default"
                           : "pointer",
@@ -757,7 +797,9 @@ export default function DiscoverPage() {
                     }}
                   >
                     {isLiked
-                      ? "Gillad"
+                      ? pendingLikeId === candidate.match_id
+                        ? "Ändrar..."
+                        : "Ångra gilla"
                       : pendingLikeId === candidate.match_id
                         ? "Sparar..."
                         : "Gilla"}
@@ -1032,15 +1074,31 @@ export default function DiscoverPage() {
                   Videopresentation
                 </div>
 
-                <div
-                  style={{
-                    color: "#2f2a27",
-                    lineHeight: 1.8,
-                    fontSize: 17,
-                  }}
-                >
-                  {profile.videoPresentation}
-                </div>
+                {isPlayableVideoReference(profile.videoPresentation) ? (
+                  <video
+                    controls
+                    src={profile.videoPresentation}
+                    style={{
+                      width: "100%",
+                      maxHeight: 320,
+                      borderRadius: 18,
+                      background: "#111",
+                      display: "block",
+                    }}
+                  >
+                    Din webbläsare kan inte spela upp videon.
+                  </video>
+                ) : (
+                  <div
+                    style={{
+                      color: "#2f2a27",
+                      lineHeight: 1.8,
+                      fontSize: 17,
+                    }}
+                  >
+                    {profile.videoPresentation}
+                  </div>
+                )}
               </div>
             ) : null}
 

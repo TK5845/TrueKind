@@ -117,6 +117,7 @@ export default function OnboardingPage() {
     const profileReady = hasBasicProfile(profile);
     const hasImage = Boolean(profile?.image);
     const hasVoice = Boolean(profile?.voiceUrl);
+    const hasVideo = Boolean(profile?.videoPresentation);
 
     return [
       {
@@ -152,14 +153,22 @@ export default function OnboardingPage() {
         optional: true,
       },
       {
-        title: "5. Gå till Discover",
+        title: "5. Lägg till videopresentation",
+        text: "En kort video är valfri och kan göra profilen mer personlig.",
+        href: "/profile",
+        cta: hasVideo ? "Hantera video" : "Lägg till video",
+        done: hasVideo,
+        optional: true,
+      },
+      {
+        title: "6. Gå till Discover",
         text: "När profilen känns okej kan du börja utforska matchningar.",
         href: "/discover",
         cta: "Öppna Discover",
         done: profileReady,
       },
       {
-        title: "6. Fortsätt till matchningar och samtal",
+        title: "7. Fortsätt till matchningar och samtal",
         text: "När du gillar någon i Discover sparas personen i matchlistan och kan öppnas som samtal.",
         href: "/matches",
         cta: "Se matchlista",

@@ -18,6 +18,7 @@ type MatchSourceClient = {
       options?: Record<string, unknown>
     ): PromiseLike<MatchMutationResult>;
     insert(value: Record<string, unknown>): PromiseLike<MatchMutationResult>;
+    update(value: Record<string, unknown>): MatchQuery;
   };
 };
 
@@ -83,7 +84,7 @@ function normalizeMatchForStorage(match: CanonicalMatch): CanonicalMatch {
     latest_signal_text: match.latest_signal_text || "",
     latest_signal_at: match.latest_signal_at || "",
     unread_count: match.unread_count ?? 0,
-    status: "active",
+    status: match.status || "active",
     created_at: match.created_at || now,
     updated_at: now,
   };
@@ -200,6 +201,60 @@ export async function saveLikedMatch(
   }
 }
 
+export async function updateLikedMatchStatus(
+  client: unknown,
+  userId: string,
+  match: CanonicalMatch,
+  status: CanonicalMatch["status"]
+) {
+  const normalized = normalizeMatchForStorage({
+    ...match,
+    status,
+  });
+  const current = readStoredLikedMatches(userId).filter(
+    (item) => item.match_id !== normalized.match_id
+  );
+  const next =
+    status === "active" ? dedupeMatches([...current, normalized]) : current;
+
+  writeStoredLikedMatches(userId, next);
+
+  const matchClient = client as MatchSourceClient;
+
+  try {
+    let result = await matchClient
+      .from("matches")
+      .update({
+        status,
+        updated_at: normalized.updated_at,
+      })
+      .eq("user_id", userId)
+      .eq("match_id", normalized.match_id);
+
+    if (result.error) {
+      result = await matchClient
+        .from("matches")
+        .upsert(toMatchPayload(userId, normalized), {
+          onConflict: "user_id,match_id",
+        });
+    }
+
+    return {
+      ok: true,
+      source: result.error ? ("local" as const) : ("matches" as const),
+      matches: sortMatches(next),
+      error: result.error ?? null,
+    };
+  } catch (error) {
+    return {
+      ok: true,
+      source: "local" as const,
+      matches: sortMatches(next),
+      error,
+    };
+  }
+}
+
 async function queryUserMatches(
   client: MatchSourceClient,
   userId: string,
@@ -259,9 +314,25 @@ async function loadUserMatches(
       .map((row) => normalizeStoredCandidate(row))
       .filter((match): match is CanonicalMatch => Boolean(match));
 
+    if (matches.length) {
+      return {
+        source: "matches",
+        matches: sortMatches(dedupeMatches(matches)),
+        error: null,
+      };
+    }
+
+    if (localMatches.length) {
+      return {
+        source: "local",
+        matches: sortMatches(localMatches),
+        error: null,
+      };
+    }
+
     return {
       source: "matches",
-      matches: sortMatches(dedupeMatches([...matches, ...localMatches])),
+      matches: [],
       error: null,
     };
   } catch (error) {

@@ -479,6 +479,8 @@ function MessagesContent() {
       );
       setSelectedId(activeConversationId);
       setHasUserSelectedConversation(true);
+      window.dispatchEvent(new Event(MESSAGE_READ_STATE_UPDATED_EVENT));
+      window.dispatchEvent(new Event(MATCH_STATE_UPDATED_EVENT));
       setSaveStatus("Skickat.");
       window.setTimeout(() => setSaveStatus(""), 1200);
     } catch {

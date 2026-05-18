@@ -3,6 +3,7 @@ import {
   MESSAGE_SELECT_COLUMNS,
   buildConversationViews,
   getUnreadSummary,
+  getUnreadSummaryFromRows,
   type ConversationView,
   type MessageRow,
 } from "./message-model";
@@ -20,10 +21,7 @@ type MessageMutationResult = {
 type MessagePreviewClient = {
   from(table: string): {
     select(columns: string): MessagePreviewQuery;
-    update(values: {
-      read_at: string;
-      is_read: boolean;
-    }): MessageReadUpdateQuery;
+    update(values: Record<string, unknown>): MessageReadUpdateQuery;
   };
 };
 
@@ -46,17 +44,19 @@ type MessageReadUpdateQuery = {
 };
 
 export function getDefaultConversationViews(
-  matches: CanonicalMatch[] = DEMO_MATCHES
+  matches: CanonicalMatch[] = DEMO_MATCHES,
+  options: { includeSeedMessages?: boolean } = {}
 ): ConversationView[] {
-  return buildConversationViews([], matches);
+  return buildConversationViews([], matches, options);
 }
 
 export function conversationViewsFromMessageResult(
   result: MessageQueryResult | null | undefined,
-  matches: CanonicalMatch[] = DEMO_MATCHES
+  matches: CanonicalMatch[] = DEMO_MATCHES,
+  options: { includeSeedMessages?: boolean } = {}
 ): ConversationView[] {
-  if (!result || result.error) return getDefaultConversationViews(matches);
-  return buildConversationViews(result.data ?? [], matches);
+  if (!result || result.error) return getDefaultConversationViews(matches, options);
+  return buildConversationViews(result.data ?? [], matches, options);
 }
 
 function selectMessages(
@@ -83,6 +83,7 @@ export async function loadConversationViews(
   }
 
   const messageClient = client as MessagePreviewClient;
+  const includeSeedMessages = !userId;
 
   try {
     const result = await selectMessages(
@@ -92,7 +93,9 @@ export async function loadConversationViews(
     );
 
     if (!result.error) {
-      return conversationViewsFromMessageResult(result, matches);
+      return conversationViewsFromMessageResult(result, matches, {
+        includeSeedMessages,
+      });
     }
   } catch {
     // Fall through to the minimum column set below. Older demo tables may not
@@ -106,9 +109,11 @@ export async function loadConversationViews(
       userId
     );
 
-    return conversationViewsFromMessageResult(result, matches);
+    return conversationViewsFromMessageResult(result, matches, {
+      includeSeedMessages,
+    });
   } catch {
-    return getDefaultConversationViews(matches);
+    return getDefaultConversationViews(matches, { includeSeedMessages });
   }
 }
 
@@ -120,7 +125,42 @@ export async function loadUnreadSummaryForUser(
   client: unknown,
   userId?: string | null
 ) {
-  return getUnreadSummary(await loadConversationViews(client, userId));
+  if (!userId) {
+    return getUnreadSummary(await loadConversationViews(client, userId));
+  }
+
+  const messageClient = client as MessagePreviewClient;
+
+  try {
+    const result = await selectMessages(
+      messageClient,
+      MESSAGE_SELECT_COLUMNS,
+      userId
+    );
+
+    if (!result.error) {
+      return getUnreadSummaryFromRows(result.data ?? []);
+    }
+  } catch {
+    // Fall through to the minimum column set below for older demo tables.
+  }
+
+  try {
+    const result = await selectMessages(
+      messageClient,
+      MESSAGE_MINIMUM_SELECT_COLUMNS,
+      userId
+    );
+
+    if (!result.error) {
+      return getUnreadSummaryFromRows(result.data ?? []);
+    }
+  } catch {}
+
+  return {
+    total_unread_count: 0,
+    unread_conversation_count: 0,
+  };
 }
 
 export async function markConversationRead(
@@ -143,6 +183,16 @@ export async function markConversationRead(
       .eq("user_id", userId)
       .eq("match_id", matchId)
       .eq("sender", "them");
+
+    if (!result.error) {
+      void messageClient
+        .from("matches")
+        .update({
+          unread_count: 0,
+        })
+        .eq("user_id", userId)
+        .eq("match_id", matchId);
+    }
 
     return { ok: !result.error, readAt };
   } catch {

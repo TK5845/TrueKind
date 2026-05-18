@@ -267,6 +267,21 @@ export function getUnreadSummary(conversations: ConversationPreview[]) {
   );
 }
 
+export function getUnreadSummaryFromRows(rows: MessageRow[]) {
+  const messages = rows
+    .map((row) => normalizeMessage(row))
+    .filter((message): message is Message => Boolean(message));
+  const unreadMessages = messages.filter(isUnreadForCurrentUser);
+  const unreadMatchIds = new Set(
+    unreadMessages.map((message) => message.match_id)
+  );
+
+  return {
+    total_unread_count: unreadMessages.length,
+    unread_conversation_count: unreadMatchIds.size,
+  };
+}
+
 export function formatUnreadCount(count: number) {
   if (count <= 0) return "";
   return count === 1 ? "1 oläst" : `${count} olästa`;
@@ -307,10 +322,7 @@ export function buildConversationViews(
     .map((row) => normalizeMessage(row))
     .filter((message): message is Message => Boolean(message));
   const matchIds = new Set(matches.map((match) => match.match_id));
-  const demoMatchIds = new Set(DEMO_MATCHES.map((match) => match.match_id));
-  const includeSeedMessages =
-    options.includeSeedMessages ??
-    matches.some((match) => demoMatchIds.has(match.match_id));
+  const includeSeedMessages = options.includeSeedMessages ?? true;
   const seedMessages = includeSeedMessages
     ? BASE_MESSAGES.filter((message) => matchIds.has(message.match_id))
     : [];

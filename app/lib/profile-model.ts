@@ -293,6 +293,11 @@ export function patchStoredProfile(patch: unknown) {
     expandedPatch.voiceUrl = patchRecord.voice_profile_url;
   }
 
+  if ("video_url" in patchRecord) {
+    expandedPatch.videoUrl = patchRecord.video_url;
+    expandedPatch.videoPresentation = patchRecord.video_url;
+  }
+
   if ("favorite_movie" in patchRecord) {
     expandedPatch.favoriteMovie = patchRecord.favorite_movie;
     expandedPatch.favorite_film = patchRecord.favorite_movie;

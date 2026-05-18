@@ -97,6 +97,24 @@ function emptyStateStyle() {
   };
 }
 
+function buildMatchStory(match: {
+  name: string;
+  about_text: string;
+  looking_for: string;
+  activity_label: string;
+  interests: string[];
+  latest_message_text?: string;
+}) {
+  const interestText = match.interests.length
+    ? `Ni kan börja i ${match.interests.slice(0, 3).join(", ")}.`
+    : "Ni kan börja med ett lugnt första samtal.";
+  const latestText = match.latest_message_text
+    ? `Senaste signalen är: “${match.latest_message_text}”`
+    : "Det finns inget samtal ännu, så första steget kan få vara enkelt.";
+
+  return `${match.name} söker ${match.looking_for.toLowerCase()} och trivs i något som liknar ${match.activity_label.toLowerCase()}. ${match.about_text} ${interestText} ${latestText}`;
+}
+
 function getInitial(name: string) {
   return name.trim().slice(0, 1).toUpperCase() || "?";
 }
@@ -520,6 +538,15 @@ function MatchesContent() {
             </div>
             <div style={{ color: "#2f2a27", fontSize: 18, lineHeight: 1.8 }}>
               {selectedMatch.about_text}
+            </div>
+          </div>
+
+          <div style={{ background: "rgba(255,255,255,0.84)", borderRadius: 24, padding: 22, border: "1px solid rgba(231,223,218,0.95)", display: "grid", gap: 12 }}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: "#6d625d" }}>
+              Mer om {selectedMatch.name}
+            </div>
+            <div style={{ color: "#2f2a27", fontSize: 17, lineHeight: 1.8 }}>
+              {buildMatchStory(selectedMatch)}
             </div>
           </div>
 

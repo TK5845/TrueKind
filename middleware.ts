@@ -1,11 +1,16 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { getSupabaseConfig } from "./utils/supabase/env";
+import { getSupabaseConfig, getSupabaseConfigIssue } from "./utils/supabase/env";
 
 export async function middleware(request: NextRequest) {
   const response = NextResponse.next({
     request,
   });
+
+  if (getSupabaseConfigIssue()) {
+    return response;
+  }
+
   const { url, key } = getSupabaseConfig();
 
   const supabase = createServerClient(
@@ -25,7 +30,11 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  await supabase.auth.getUser();
+  try {
+    await supabase.auth.getUser();
+  } catch {
+    return response;
+  }
 
   return response;
 }

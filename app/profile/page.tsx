@@ -11,6 +11,7 @@ import {
   PROFILE_UPDATED_EVENT,
   canonicalProfileToDbInput,
   normalizeProfile,
+  patchStoredProfile,
   profileToStorage,
   readStoredProfile,
   writeStoredProfile,
@@ -18,7 +19,9 @@ import {
 import { createClient } from "../../utils/supabase/client";
 
 const PROFILE_IMAGE_BUCKET = "profile-images";
+const VIDEO_PRESENTATION_BUCKET = "video-presentations";
 const MAX_IMAGE_DATA_URL_LENGTH = 700_000;
+const MAX_VIDEO_FILE_SIZE = 50 * 1024 * 1024;
 
 type ProfileDraft = {
   name: string;
@@ -141,7 +144,7 @@ function draftToStoredProfile(draft: ProfileDraft) {
     favorite_song: draft.favoriteSong,
     favorite_movie: draft.favoriteFilm,
     favorite_book: draft.favoriteBook,
-    video_url: draft.videoPresentation,
+    video_url: cleanPersistedVideoUrl(draft.videoPresentation),
     voice_profile_url: draft.voiceUrl,
   });
 }
@@ -153,6 +156,15 @@ function loadLocalProfile(): ProfileDraft | null {
 
 function saveLocalProfile(draft: ProfileDraft) {
   writeStoredProfile(draftToStoredProfile(draft));
+}
+
+function getLocalVideoUrl() {
+  return cleanPersistedVideoUrl(readStoredProfile()?.video_url ?? "");
+}
+
+function cleanPersistedVideoUrl(value: string) {
+  const trimmed = value.trim();
+  return trimmed && !trimmed.startsWith("blob:") ? trimmed : "";
 }
 
 function withTimeout<T>(promise: Promise<T>, ms: number) {
@@ -290,6 +302,124 @@ async function uploadProfileImage(imageValue: string) {
   return { imageUrl: publicUrl, warning: "" };
 }
 
+function getVideoExtension(file: File) {
+  if (file.type === "video/mp4") return "mp4";
+  if (file.type === "video/webm") return "webm";
+  if (file.type === "video/quicktime") return "mov";
+
+  const extension = file.name.split(".").pop()?.trim().toLowerCase();
+  return extension && /^[a-z0-9]+$/.test(extension) ? extension : "mp4";
+}
+
+function possibleVideoPaths(userId: string) {
+  return [
+    `${userId}/video-presentation.mp4`,
+    `${userId}/video-presentation.webm`,
+    `${userId}/video-presentation.mov`,
+  ];
+}
+
+function getStorageErrorDetails(error: unknown) {
+  if (!error || typeof error !== "object") return String(error);
+
+  const record = error as Record<string, unknown>;
+  return JSON.stringify(
+    {
+      name: record.name,
+      message: record.message,
+      status: record.status,
+      statusCode: record.statusCode,
+      error: record.error,
+      code: record.code,
+    },
+    null,
+    2
+  );
+}
+
+async function uploadProfileVideo(
+  videoValue: string,
+  pendingVideoFile: File | null
+) {
+  if (!pendingVideoFile) {
+    return { videoUrl: videoValue, error: "" };
+  }
+
+  const supabase = createClient();
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    return {
+      videoUrl: videoValue,
+      error:
+        "Du måste vara inloggad för att spara videopresentationen.",
+    };
+  }
+
+  const extension = getVideoExtension(pendingVideoFile);
+  const filePath = `${user.id}/video-presentation.${extension}`;
+  const bucket = supabase.storage.from(VIDEO_PRESENTATION_BUCKET);
+
+  let { error: uploadError } = await bucket.upload(
+    filePath,
+    pendingVideoFile,
+    {
+      upsert: false,
+      contentType: pendingVideoFile.type || "video/mp4",
+    }
+  );
+
+  if (uploadError) {
+    await bucket.remove([filePath]);
+    uploadError = (
+      await bucket.upload(filePath, pendingVideoFile, {
+        upsert: false,
+        contentType: pendingVideoFile.type || "video/mp4",
+      })
+    ).error;
+  }
+
+  if (uploadError) {
+    console.info(
+      `[TrueKind video] Storage upload failed\nbucket=${VIDEO_PRESENTATION_BUCKET}\npath=${filePath}\ncontentType=${pendingVideoFile.type || "video/mp4"}\nsize=${pendingVideoFile.size}\nerror=${getStorageErrorDetails(uploadError)}`
+    );
+    return {
+      videoUrl: videoValue,
+      error:
+        "Videon kunde inte laddas upp till kontot just nu.",
+    };
+  }
+
+  const {
+    data: { publicUrl },
+  } = bucket.getPublicUrl(filePath);
+
+  if (!publicUrl || publicUrl.startsWith("blob:")) {
+    console.info("[TrueKind video] Storage public URL missing", {
+      bucket: VIDEO_PRESENTATION_BUCKET,
+      filePath,
+      publicUrl,
+    });
+    return {
+      videoUrl: videoValue,
+      error:
+        "Videon fick ingen sparad länk. Försök igen.",
+    };
+  }
+
+  const oldPaths = possibleVideoPaths(user.id).filter(
+    (path) => path !== filePath
+  );
+  if (oldPaths.length) {
+    void supabase.storage.from(VIDEO_PRESENTATION_BUCKET).remove(oldPaths);
+  }
+
+  return { videoUrl: publicUrl, error: "" };
+}
+
 function pillStyle() {
   return {
     display: "inline-flex",
@@ -348,7 +478,15 @@ function ProfileContent() {
   const [status, setStatus] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [persistedVideoUrl, setPersistedVideoUrl] = useState("");
+  const [pendingVideoFile, setPendingVideoFile] = useState<File | null>(null);
+  const [pendingVideoPreviewUrl, setPendingVideoPreviewUrl] = useState("");
   const hasUserEditedRef = useRef(false);
+  const pendingVideoPreviewUrlRef = useRef("");
+
+  useEffect(() => {
+    pendingVideoPreviewUrlRef.current = pendingVideoPreviewUrl;
+  }, [pendingVideoPreviewUrl]);
 
   useEffect(() => {
     let mounted = true;
@@ -357,10 +495,14 @@ function ProfileContent() {
       await Promise.resolve();
 
       const localDraft = loadLocalProfile();
+      const localVideoUrl = getLocalVideoUrl();
       if (!mounted) return;
 
       if (localDraft) {
         setDraft(localDraft);
+      }
+      if (localVideoUrl) {
+        setPersistedVideoUrl(localVideoUrl);
       }
 
       const result = await withTimeout(getCurrentUserProfile(), 2500);
@@ -370,18 +512,35 @@ function ProfileContent() {
         profile: result.profile,
         user: result.user,
       });
+      const dbVideoUrl = normalizeProfile(
+        result.profile,
+        result.user
+      ).video_url;
+      const nextDraft = {
+        ...supabaseDraft,
+        videoPresentation:
+          dbVideoUrl || localVideoUrl || supabaseDraft.videoPresentation || "",
+      };
 
       if (hasUserEditedRef.current) return;
 
-      setDraft(supabaseDraft);
-      saveLocalProfile(supabaseDraft);
+      setDraft(nextDraft);
+      setPersistedVideoUrl(nextDraft.videoPresentation);
+      saveLocalProfile(nextDraft);
+      if (dbVideoUrl) {
+        patchStoredProfile({
+          video_url: dbVideoUrl,
+        });
+      }
     }
 
     void hydrateProfile();
 
     function onProfileUpdated() {
       if (!mounted || hasUserEditedRef.current) return;
-      setDraft(loadLocalProfile() ?? emptyDraft());
+      const localDraft = loadLocalProfile() ?? emptyDraft();
+      setDraft(localDraft);
+      setPersistedVideoUrl(cleanPersistedVideoUrl(localDraft.videoPresentation));
     }
 
     window.addEventListener(
@@ -395,6 +554,10 @@ function ProfileContent() {
         PROFILE_UPDATED_EVENT,
         onProfileUpdated as EventListener
       );
+
+      if (pendingVideoPreviewUrlRef.current) {
+        URL.revokeObjectURL(pendingVideoPreviewUrlRef.current);
+      }
     };
   }, []);
 
@@ -444,6 +607,153 @@ function ProfileContent() {
     setStatus("Bilden är borttagen i utkastet. Spara profilen för att behålla ändringen.");
   }
 
+  function clearPendingVideo() {
+    if (pendingVideoPreviewUrlRef.current) {
+      URL.revokeObjectURL(pendingVideoPreviewUrlRef.current);
+      pendingVideoPreviewUrlRef.current = "";
+    }
+
+    setPendingVideoFile(null);
+    setPendingVideoPreviewUrl("");
+  }
+
+  function handleVideoChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("video/")) {
+      setStatus("Välj en giltig videofil.");
+      event.target.value = "";
+      return;
+    }
+
+    if (file.size > MAX_VIDEO_FILE_SIZE) {
+      setStatus("Videon är för stor. Välj en fil under 50 MB.");
+      event.target.value = "";
+      return;
+    }
+
+    clearPendingVideo();
+    const previewUrl = URL.createObjectURL(file);
+    pendingVideoPreviewUrlRef.current = previewUrl;
+    setPendingVideoFile(file);
+    setPendingVideoPreviewUrl(previewUrl);
+    setStatus("Videon är vald. Spara videon när du är nöjd.");
+    event.target.value = "";
+  }
+
+  async function handleSaveVideo() {
+    if (!pendingVideoFile || isUploading) {
+      setStatus("Det finns ingen ny video att spara.");
+      return;
+    }
+
+    setIsUploading(true);
+    setStatus("Sparar videopresentation...");
+
+    try {
+      const videoResult = await uploadProfileVideo("", pendingVideoFile);
+
+      if (videoResult.error) {
+        setStatus(videoResult.error);
+        return;
+      }
+
+      const videoUrl = cleanPersistedVideoUrl(videoResult.videoUrl);
+      if (!videoUrl) {
+        setStatus("Videon fick ingen sparad länk. Försök igen.");
+        return;
+      }
+
+      const saveResult = await upsertCurrentUserProfile({
+        video_url: videoUrl,
+      });
+
+      if (saveResult.error) {
+        console.error("[TrueKind video] profiles.video_url upsert failed", {
+          videoUrl,
+          error: saveResult.error,
+        });
+        setStatus("Videon laddades upp, men kunde inte kopplas till profilen.");
+        return;
+      }
+
+      const verifyResult = await getCurrentUserProfile();
+      const verifiedVideoUrl = normalizeProfile(
+        verifyResult.profile,
+        verifyResult.user
+      ).video_url;
+
+      if (verifyResult.error || verifiedVideoUrl !== videoUrl) {
+        console.error("[TrueKind video] profiles.video_url readback failed", {
+          expectedVideoUrl: videoUrl,
+          actualVideoUrl: verifiedVideoUrl,
+          profile: verifyResult.profile,
+          error: verifyResult.error,
+        });
+        setStatus(
+          "Videon laddades upp, men kunde inte läsas tillbaka från profilen."
+        );
+        return;
+      }
+
+      console.info("[TrueKind video] profiles.video_url saved", {
+        videoUrl: verifiedVideoUrl,
+      });
+
+      setPersistedVideoUrl(videoUrl);
+      setDraft((prev) => ({
+        ...prev,
+        videoPresentation: videoUrl,
+      }));
+      patchStoredProfile({
+        video_url: videoUrl,
+      });
+      clearPendingVideo();
+      setStatus("Videopresentationen är sparad.");
+    } catch {
+      setStatus("Videopresentationen kunde inte sparas just nu.");
+    } finally {
+      setIsUploading(false);
+    }
+  }
+
+  async function handleRemoveVideo() {
+    setIsUploading(true);
+    setStatus("Tar bort videopresentation...");
+
+    try {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (user) {
+        await supabase.storage
+          .from(VIDEO_PRESENTATION_BUCKET)
+          .remove(possibleVideoPaths(user.id));
+        await upsertCurrentUserProfile({
+          video_url: null,
+        });
+      }
+
+      clearPendingVideo();
+      setPersistedVideoUrl("");
+      setDraft((prev) => ({
+        ...prev,
+        videoPresentation: "",
+      }));
+      patchStoredProfile({
+        video_url: "",
+      });
+      setStatus("Videopresentationen är borttagen.");
+    } catch {
+      setStatus("Videopresentationen kunde inte tas bort helt just nu.");
+    } finally {
+      setIsUploading(false);
+    }
+  }
+
   async function handleSave() {
     if (isSaving || isUploading) return;
 
@@ -452,6 +762,7 @@ function ProfileContent() {
 
     try {
       const imageResult = await uploadProfileImage(draft.image.trim());
+
       const nextDraft = {
         ...draft,
         image: imageResult.imageUrl,
@@ -465,7 +776,7 @@ function ProfileContent() {
         favoriteSong: draft.favoriteSong.trim(),
         favoriteFilm: draft.favoriteFilm.trim(),
         favoriteBook: draft.favoriteBook.trim(),
-        videoPresentation: draft.videoPresentation.trim(),
+        videoPresentation: persistedVideoUrl,
       };
 
       const result = await upsertCurrentUserProfile(
@@ -479,6 +790,9 @@ function ProfileContent() {
 
       setDraft(nextDraft);
       saveLocalProfile(nextDraft);
+      patchStoredProfile({
+        video_url: persistedVideoUrl,
+      });
       hasUserEditedRef.current = false;
       setStatus(imageResult.warning || "Profilen är sparad.");
     } catch {
@@ -489,6 +803,7 @@ function ProfileContent() {
   }
 
   const interestList = textToList(draft.interestsText);
+  const activeVideoUrl = pendingVideoPreviewUrl || persistedVideoUrl;
 
   return (
     <main className="tk-page-main" style={{ display: "grid", gap: 28 }}>
@@ -558,6 +873,9 @@ function ProfileContent() {
           ) : null}
           {draft.voiceUrl ? (
             <span style={pillStyle()}>🎙️ Röstprofil sparad</span>
+          ) : null}
+          {draft.videoPresentation ? (
+            <span style={pillStyle()}>Videopresentation sparad</span>
           ) : null}
         </div>
       </section>
@@ -772,6 +1090,123 @@ function ProfileContent() {
                 {draft.voiceUrl ? "Hantera röstprofil" : "Lägg till röstprofil"}
               </Link>
             </div>
+
+            <div style={sectionCardStyle()}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 10,
+                  flexWrap: "wrap",
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: 15,
+                    fontWeight: 700,
+                    color: "#6d625d",
+                  }}
+                >
+                  Videopresentation
+                </span>
+                <span style={pillStyle()}>
+                  {pendingVideoFile
+                    ? "Vald - inte sparad"
+                    : persistedVideoUrl
+                      ? "Sparad i profil"
+                      : "Ingen video"}
+                </span>
+              </div>
+
+              <div style={{ color: "#3e3733", lineHeight: 1.7 }}>
+                {activeVideoUrl
+                  ? pendingVideoFile
+                    ? "Ny video är vald. Spara den här innan du lämnar sidan."
+                    : "Din videopresentation är sparad och kopplad till din profil."
+                  : "Du har ännu inte lagt till någon videopresentation."}
+              </div>
+
+              {activeVideoUrl ? (
+                <video
+                  controls
+                  src={activeVideoUrl}
+                  style={{
+                    width: "100%",
+                    borderRadius: 18,
+                    border: "1px solid rgba(231,223,218,0.95)",
+                    background: "#111",
+                  }}
+                />
+              ) : null}
+
+              <label
+                style={{
+                  display: "inline-block",
+                  width: "fit-content",
+                  padding: "14px 18px",
+                  borderRadius: 14,
+                  border: "1px solid #111",
+                  textDecoration: "none",
+                  color: "white",
+                  background: "#111",
+                  fontWeight: 700,
+                  cursor: isSaving || isUploading ? "default" : "pointer",
+                  opacity: isSaving || isUploading ? 0.65 : 1,
+                }}
+              >
+                {pendingVideoFile
+                  ? "Byt vald video"
+                  : persistedVideoUrl
+                    ? "Byt video"
+                    : "Ladda upp video"}
+                <input
+                  type="file"
+                  accept="video/*"
+                  onChange={handleVideoChange}
+                  disabled={isSaving || isUploading}
+                  style={{ display: "none" }}
+                />
+              </label>
+
+              <button
+                onClick={handleSaveVideo}
+                disabled={!pendingVideoFile || isUploading || isSaving}
+                style={{
+                  padding: "14px 18px",
+                  borderRadius: 14,
+                  border: "1px solid rgba(208,198,191,0.95)",
+                  background: "white",
+                  color: "#111",
+                  cursor:
+                    !pendingVideoFile || isUploading || isSaving
+                      ? "default"
+                      : "pointer",
+                  opacity: !pendingVideoFile || isUploading || isSaving ? 0.55 : 1,
+                }}
+              >
+                {isUploading && pendingVideoFile ? "Sparar video..." : "Spara video"}
+              </button>
+
+              <button
+                onClick={handleRemoveVideo}
+                disabled={isSaving || isUploading || !activeVideoUrl}
+                style={{
+                  padding: "14px 18px",
+                  borderRadius: 14,
+                  border: "1px solid rgba(208,198,191,0.95)",
+                  background: "white",
+                  color: "#111",
+                  cursor:
+                    isSaving || isUploading || !activeVideoUrl
+                      ? "default"
+                      : "pointer",
+                  opacity: isSaving || isUploading || !activeVideoUrl ? 0.55 : 1,
+                }}
+              >
+                Ta bort video
+              </button>
+            </div>
           </div>
 
           <div style={{ display: "grid", gap: 20 }}>
@@ -943,13 +1378,6 @@ function ProfileContent() {
                 value={draft.prompt}
                 onChange={(e) => updateField("prompt", e.target.value)}
                 style={textareaStyle(140)}
-              />
-
-              <textarea
-                placeholder="Videopresentation"
-                value={draft.videoPresentation}
-                onChange={(e) => updateField("videoPresentation", e.target.value)}
-                style={textareaStyle(110)}
               />
             </div>
 
