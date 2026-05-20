@@ -18,7 +18,7 @@ import {
 } from "../lib/message-model";
 import {
   getDefaultConversationViews,
-  loadConversationViews,
+  loadConversationSource,
   markConversationRead,
 } from "../lib/message-preview-model";
 import {
@@ -201,7 +201,7 @@ function MessagesContent() {
     );
     const nextCandidateMatches = matchResult.matches;
 
-    const nextConversations = await loadConversationViews(
+    const conversationResult = await loadConversationSource(
       supabase,
       activeUserId,
       nextCandidateMatches
@@ -210,7 +210,7 @@ function MessagesContent() {
     return {
       userId: activeUserId,
       candidateMatches: nextCandidateMatches,
-      conversations: nextConversations,
+      conversations: conversationResult.conversations,
     };
   }
 
@@ -273,14 +273,14 @@ function MessagesContent() {
         (matchResult) => {
           const nextCandidateMatches = matchResult.matches;
 
-          void loadConversationViews(
+          void loadConversationSource(
             supabase,
             activeUserId,
             nextCandidateMatches
-          ).then((nextConversations) => {
+          ).then((conversationResult) => {
             if (mounted) {
               setCandidateMatches(nextCandidateMatches);
-              setConversations(nextConversations);
+              setConversations(conversationResult.conversations);
             }
           });
         });

@@ -15,7 +15,7 @@ import {
 } from "../lib/message-model";
 import {
   getDefaultConversationViews,
-  loadConversationViews,
+  loadConversationSource,
 } from "../lib/message-preview-model";
 import {
   buildMatchViewsFromSource,
@@ -279,7 +279,7 @@ function MatchesContent() {
 
       const matchResult = await loadStoredMatchSource(supabase, activeUserId);
       const nextCandidateMatches = matchResult.matches;
-      const conversations = await loadConversationViews(
+      const conversationResult = await loadConversationSource(
         supabase,
         activeUserId,
         nextCandidateMatches
@@ -287,7 +287,7 @@ function MatchesContent() {
 
       if (!mounted) return;
       setCandidateMatches(nextCandidateMatches);
-      setConversationViews(conversations);
+      setConversationViews(conversationResult.conversations);
     }
 
     void hydrateConversationPreviews();

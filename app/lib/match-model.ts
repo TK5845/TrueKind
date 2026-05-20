@@ -2,6 +2,26 @@ import type { ProfileUiFields } from "./profile-model";
 
 export type MatchStatus = "active" | "archived" | "hidden";
 
+export const MATCH_STATUS = {
+  active: "active",
+  hidden: "hidden",
+  archived: "archived",
+} as const satisfies Record<MatchStatus, MatchStatus>;
+
+export function normalizeMatchStatus(value: unknown): MatchStatus {
+  return value === MATCH_STATUS.archived || value === MATCH_STATUS.hidden
+    ? value
+    : MATCH_STATUS.active;
+}
+
+export function isVisibleMatchStatus(value: unknown) {
+  return normalizeMatchStatus(value) === MATCH_STATUS.active;
+}
+
+export function isVisibleMatch(match: Pick<CanonicalMatch, "status">) {
+  return isVisibleMatchStatus(match.status);
+}
+
 export type CanonicalMatch = {
   match_id: string;
   target_profile_id: string;

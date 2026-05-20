@@ -13,29 +13,19 @@ import {
   patchStoredProfile,
   readStoredProfile,
 } from "../lib/profile-model";
-
-const VOICE_BUCKET = "voice-profiles";
+import {
+  VOICE_PROFILE_BUCKET,
+  cleanPersistedMediaUrl,
+  getStorageErrorDetails,
+  getVoiceProfilePath,
+  possibleVoiceProfilePaths,
+  validateMediaFile,
+} from "../lib/profile-media";
 
 function getLocalVoiceUrl() {
   const value = readStoredProfile()?.voice_profile_url ?? "";
 
-  return value && !value.startsWith("blob:") ? value : "";
-}
-
-function getExtension(blob: Blob) {
-  if (blob.type === "audio/mp4") return "m4a";
-  if (blob.type === "audio/mpeg") return "mp3";
-  if (blob.type === "audio/ogg") return "ogg";
-  return "webm";
-}
-
-function possibleVoicePaths(userId: string) {
-  return [
-    `${userId}/voice-profile.webm`,
-    `${userId}/voice-profile.ogg`,
-    `${userId}/voice-profile.mp3`,
-    `${userId}/voice-profile.m4a`,
-  ];
+  return cleanPersistedMediaUrl(value);
 }
 
 function withTimeout<T>(promise: Promise<T>, ms: number) {
@@ -146,6 +136,25 @@ function VoiceContent() {
       recorder.onstop = () => {
         const mimeType = recorder.mimeType || "audio/webm";
         const blob = new Blob(chunksRef.current, { type: mimeType });
+        const validationMessage = validateMediaFile(blob, {
+          kind: "audio",
+          invalidTypeMessage: "Inspelningen fick inget giltigt ljudformat.",
+        });
+
+        if (validationMessage) {
+          setPendingBlob(null);
+          setPendingPreviewUrl("");
+          setIsRecording(false);
+          setStatus(validationMessage);
+
+          if (streamRef.current) {
+            streamRef.current.getTracks().forEach((track) => track.stop());
+            streamRef.current = null;
+          }
+
+          return;
+        }
+
         const previewUrl = URL.createObjectURL(blob);
 
         if (pendingPreviewUrlRef.current) {
@@ -203,24 +212,40 @@ function VoiceContent() {
         return;
       }
 
-      const extension = getExtension(pendingBlob);
-      const filePath = `${user.id}/voice-profile.${extension}`;
+      const validationMessage = validateMediaFile(pendingBlob, {
+        kind: "audio",
+        invalidTypeMessage: "Inspelningen fick inget giltigt ljudformat.",
+      });
+
+      if (validationMessage) {
+        setStatus(validationMessage);
+        return;
+      }
+
+      const filePath = getVoiceProfilePath(user.id, pendingBlob);
 
       const { error: uploadError } = await supabase.storage
-        .from(VOICE_BUCKET)
+        .from(VOICE_PROFILE_BUCKET)
         .upload(filePath, pendingBlob, {
           upsert: true,
           contentType: pendingBlob.type || "audio/webm",
         });
 
       if (uploadError) {
+        console.info("[TrueKind voice] Storage upload failed", {
+          bucket: VOICE_PROFILE_BUCKET,
+          path: filePath,
+          contentType: pendingBlob.type || "audio/webm",
+          size: pendingBlob.size,
+          error: getStorageErrorDetails(uploadError),
+        });
         setStatus("Röstprofilen kunde inte sparas just nu.");
         return;
       }
 
       const {
         data: { publicUrl },
-      } = supabase.storage.from(VOICE_BUCKET).getPublicUrl(filePath);
+      } = supabase.storage.from(VOICE_PROFILE_BUCKET).getPublicUrl(filePath);
 
       if (!publicUrl || publicUrl.startsWith("blob:")) {
         setStatus("Röstfilen sparades inte korrekt. Försök igen.");
@@ -244,11 +269,11 @@ function VoiceContent() {
       clearPendingRecording();
       setStatus("Röstprofilen är sparad.");
 
-      const oldPaths = possibleVoicePaths(user.id).filter(
+      const oldPaths = possibleVoiceProfilePaths(user.id).filter(
         (path) => path !== filePath
       );
       if (oldPaths.length) {
-        void supabase.storage.from(VOICE_BUCKET).remove(oldPaths);
+        void supabase.storage.from(VOICE_PROFILE_BUCKET).remove(oldPaths);
       }
     } catch {
       setStatus("Röstprofilen kunde inte sparas just nu.");
@@ -268,12 +293,29 @@ function VoiceContent() {
       } = await supabase.auth.getUser();
 
       if (user) {
-        await supabase.storage
-          .from(VOICE_BUCKET)
-          .remove(possibleVoicePaths(user.id));
-        await upsertCurrentUserProfile({
+        const removeResult = await supabase.storage
+          .from(VOICE_PROFILE_BUCKET)
+          .remove(possibleVoiceProfilePaths(user.id));
+        const saveResult = await upsertCurrentUserProfile({
           voice_url: null,
         });
+
+        if (saveResult.error) {
+          setStatus("Röstprofilen kunde inte kopplas bort från profilen just nu.");
+          return;
+        }
+
+        if (removeResult.error) {
+          console.info("[TrueKind voice] Storage cleanup failed", {
+            bucket: VOICE_PROFILE_BUCKET,
+            error: getStorageErrorDetails(removeResult.error),
+          });
+          setStatus(
+            "Röstprofilen är borttagen från profilen, men lagringen kunde inte städas helt just nu."
+          );
+        } else {
+          setStatus("Röstprofilen är borttagen.");
+        }
       }
 
       clearPendingRecording();
@@ -282,7 +324,9 @@ function VoiceContent() {
         voice_profile_url: "",
       });
 
-      setStatus("Röstprofilen är borttagen.");
+      if (!user) {
+        setStatus("Röstprofilen är borttagen lokalt.");
+      }
     } catch {
       setStatus("Röstprofilen kunde inte tas bort helt just nu.");
     } finally {

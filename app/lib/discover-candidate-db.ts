@@ -1,4 +1,5 @@
-import type { CanonicalMatch } from "./match-model";
+import { normalizeMatchStatus, type CanonicalMatch } from "./match-model";
+import type { DataSourceReason, SourceState } from "./data-source";
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -19,12 +20,29 @@ type CandidateQuery = PromiseLike<CandidateQueryResult> & {
 };
 
 export type CandidateSource = "backend" | "demo";
+export type CandidateScope = "user" | "global" | "demo";
 
-export type StoredCandidateResult = {
-  source: CandidateSource;
+export type StoredCandidateResult = SourceState<CandidateSource> & {
+  scope: CandidateScope;
   candidates: CanonicalMatch[];
-  error: unknown | null;
 };
+
+function candidateResult(input: {
+  source: CandidateSource;
+  scope: CandidateScope;
+  candidates: CanonicalMatch[];
+  reason: DataSourceReason;
+  error?: unknown;
+}): StoredCandidateResult {
+  return {
+    source: input.source,
+    scope: input.scope,
+    candidates: sortCandidates(input.candidates),
+    reason: input.reason,
+    isFallback: input.source === "demo" || input.scope === "global",
+    error: input.error ?? null,
+  };
+}
 
 function asRecord(value: unknown): UnknownRecord {
   return value && typeof value === "object" && !Array.isArray(value)
@@ -75,10 +93,6 @@ function cleanList(value: unknown) {
   return [];
 }
 
-function normalizeStatus(value: unknown): CanonicalMatch["status"] {
-  return value === "archived" || value === "hidden" ? value : "active";
-}
-
 export function normalizeStoredCandidate(input: unknown): CanonicalMatch | null {
   const row = asRecord(input);
   const matchId = cleanString(row.match_id, row.id).toLowerCase();
@@ -120,7 +134,7 @@ export function normalizeStoredCandidate(input: unknown): CanonicalMatch | null 
     ),
     latest_signal_at: cleanString(row.latest_signal_at, row.latest_message_at),
     unread_count: cleanNumber(row.unread_count),
-    status: normalizeStatus(row.status),
+    status: normalizeMatchStatus(row.status),
     created_at: cleanString(row.created_at, new Date().toISOString()),
     updated_at: cleanString(row.updated_at, row.created_at, new Date().toISOString()),
   };
@@ -177,11 +191,12 @@ export async function loadStoredDiscoverCandidates(
       const scopedCandidates = normalizeCandidateRows(scopedResult.data);
 
       if (scopedCandidates.length) {
-        return {
+        return candidateResult({
           source: "backend",
+          scope: "user",
           candidates: sortCandidates(scopedCandidates),
-          error: null,
-        };
+          reason: "backend-user",
+        });
       }
     }
 
@@ -189,32 +204,38 @@ export async function loadStoredDiscoverCandidates(
 
     if (result.error) {
       if (scopedQuerySucceeded) {
-        return {
+        return candidateResult({
           source: "backend",
+          scope: "user",
           candidates: [],
-          error: null,
-        };
+          reason: "backend-empty",
+        });
       }
 
-      return {
+      return candidateResult({
         source: "demo",
+        scope: "demo",
         candidates: [],
+        reason: "backend-error",
         error: result.error,
-      };
+      });
     }
 
     const candidates = normalizeCandidateRows(result.data);
 
-    return {
+    return candidateResult({
       source: "backend",
+      scope: scopedQuerySucceeded ? "global" : "global",
       candidates: sortCandidates(candidates),
-      error: null,
-    };
+      reason: scopedQuerySucceeded ? "backend-global" : "backend-global",
+    });
   } catch (error) {
-    return {
+    return candidateResult({
       source: "demo",
+      scope: "demo",
       candidates: [],
+      reason: "backend-error",
       error,
-    };
+    });
   }
 }

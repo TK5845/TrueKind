@@ -18,7 +18,7 @@ import {
 } from "../lib/message-model";
 import {
   getDefaultConversationViews,
-  loadConversationViews,
+  loadConversationSource,
 } from "../lib/message-preview-model";
 import {
   DEMO_MATCHES,
@@ -238,7 +238,7 @@ export default function DiscoverPage() {
             ? DEMO_MATCHES
             : [];
         const messageResult = await withTimeout(
-          loadConversationViews(supabase, session.user.id, nextCandidateMatches),
+          loadConversationSource(supabase, session.user.id, nextCandidateMatches),
           2500
         );
         const matchResult = await withTimeout(
@@ -249,7 +249,7 @@ export default function DiscoverPage() {
         if (!mounted) return;
 
         if (messageResult) {
-          setConversationViews(messageResult);
+          setConversationViews(messageResult.conversations);
         }
 
         setCandidateMatches(nextCandidateMatches);

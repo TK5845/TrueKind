@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "../../utils/supabase/client";
+import { MATCH_STATE_UPDATED_EVENT, loadStoredMatchSource } from "../lib/match-db";
 import { MESSAGE_READ_STATE_UPDATED_EVENT } from "../lib/message-model";
 import { loadUnreadSummaryForUser } from "../lib/message-preview-model";
 
@@ -33,7 +34,13 @@ export default function MessageBadge() {
         return;
       }
 
-      const summary = await loadUnreadSummaryForUser(supabase, userId);
+      const matchResult = await loadStoredMatchSource(supabase, userId);
+      const visibleMatchIds = matchResult.matches.map((match) => match.match_id);
+      const summary = await loadUnreadSummaryForUser(
+        supabase,
+        userId,
+        visibleMatchIds
+      );
 
       if (!mounted) return;
       setUnreadCount(summary.total_unread_count);
@@ -49,6 +56,7 @@ export default function MessageBadge() {
       MESSAGE_READ_STATE_UPDATED_EVENT,
       onReadStateUpdated
     );
+    window.addEventListener(MATCH_STATE_UPDATED_EVENT, onReadStateUpdated);
 
     const {
       data: { subscription },
@@ -63,6 +71,7 @@ export default function MessageBadge() {
         MESSAGE_READ_STATE_UPDATED_EVENT,
         onReadStateUpdated
       );
+      window.removeEventListener(MATCH_STATE_UPDATED_EVENT, onReadStateUpdated);
       subscription.unsubscribe();
     };
   }, []);

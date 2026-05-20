@@ -1,5 +1,11 @@
 import { normalizeStoredCandidate } from "./discover-candidate-db";
-import { type CanonicalMatch } from "./match-model";
+import type { DataSourceReason, SourceState } from "./data-source";
+import {
+  MATCH_STATUS,
+  isVisibleMatch,
+  normalizeMatchStatus,
+  type CanonicalMatch,
+} from "./match-model";
 
 type MatchQueryResult = {
   data?: unknown[] | null;
@@ -36,11 +42,24 @@ const LIKED_MATCHES_STORAGE_PREFIX = "truekind_liked_matches";
 
 export type MatchSource = "matches" | "local" | "demo";
 
-export type StoredMatchSourceResult = {
+export type StoredMatchSourceResult = SourceState<MatchSource> & {
+  matches: CanonicalMatch[];
+};
+
+function matchSourceResult(input: {
   source: MatchSource;
   matches: CanonicalMatch[];
-  error: unknown | null;
-};
+  reason: DataSourceReason;
+  error?: unknown;
+}): StoredMatchSourceResult {
+  return {
+    source: input.source,
+    matches: sortMatches(input.matches),
+    reason: input.reason,
+    isFallback: input.source !== "matches",
+    error: input.error ?? null,
+  };
+}
 
 function sortMatches(matches: CanonicalMatch[]) {
   return [...matches].sort((a, b) => {
@@ -67,7 +86,7 @@ function dedupeMatches(matches: CanonicalMatch[]) {
     byId.set(match.match_id, {
       ...byId.get(match.match_id),
       ...match,
-      status: match.status || "active",
+      status: normalizeMatchStatus(match.status),
     });
   }
 
@@ -84,7 +103,7 @@ function normalizeMatchForStorage(match: CanonicalMatch): CanonicalMatch {
     latest_signal_text: match.latest_signal_text || "",
     latest_signal_at: match.latest_signal_at || "",
     unread_count: match.unread_count ?? 0,
-    status: match.status || "active",
+    status: normalizeMatchStatus(match.status),
     created_at: match.created_at || now,
     updated_at: now,
   };
@@ -103,7 +122,7 @@ export function readStoredLikedMatches(userId?: string | null) {
     return parsed
       .map((item) => normalizeStoredCandidate(item))
       .filter((match): match is CanonicalMatch =>
-        Boolean(match && match.status === "active")
+        Boolean(match && isVisibleMatch(match))
       );
   } catch {
     return [];
@@ -137,7 +156,13 @@ export function storeLikedMatchLocally(
   match: CanonicalMatch
 ) {
   const current = readStoredLikedMatches(userId);
-  const next = dedupeMatches([...current, normalizeMatchForStorage(match)]);
+  const next = dedupeMatches([
+    ...current,
+    normalizeMatchForStorage({
+      ...match,
+      status: MATCH_STATUS.active,
+    }),
+  ]);
   writeStoredLikedMatches(userId, next);
   return sortMatches(next);
 }
@@ -172,9 +197,13 @@ export async function saveLikedMatch(
   userId: string,
   match: CanonicalMatch
 ) {
-  const localMatches = storeLikedMatchLocally(userId, match);
+  const activeMatch = {
+    ...match,
+    status: MATCH_STATUS.active,
+  };
+  const localMatches = storeLikedMatchLocally(userId, activeMatch);
   const matchClient = client as MatchSourceClient;
-  const payload = toMatchPayload(userId, match);
+  const payload = toMatchPayload(userId, activeMatch);
 
   try {
     let result = await matchClient
@@ -214,8 +243,9 @@ export async function updateLikedMatchStatus(
   const current = readStoredLikedMatches(userId).filter(
     (item) => item.match_id !== normalized.match_id
   );
-  const next =
-    status === "active" ? dedupeMatches([...current, normalized]) : current;
+  const next = isVisibleMatch(normalized)
+    ? dedupeMatches([...current, normalized])
+    : current;
 
   writeStoredLikedMatches(userId, next);
 
@@ -296,61 +326,67 @@ async function loadUserMatches(
 
     if (result.error) {
       if (localMatches.length) {
-        return {
+        return matchSourceResult({
           source: "local",
           matches: sortMatches(localMatches),
+          reason: "backend-error-local",
           error: result.error,
-        };
+        });
       }
 
-      return {
+      return matchSourceResult({
         source: "demo",
         matches: [],
+        reason: "backend-error",
         error: result.error,
-      };
+      });
     }
 
     const matches = (result.data ?? [])
       .map((row) => normalizeStoredCandidate(row))
-      .filter((match): match is CanonicalMatch => Boolean(match));
+      .filter((match): match is CanonicalMatch =>
+        Boolean(match && isVisibleMatch(match))
+      );
 
     if (matches.length) {
-      return {
+      return matchSourceResult({
         source: "matches",
         matches: sortMatches(dedupeMatches(matches)),
-        error: null,
-      };
+        reason: "backend-user",
+      });
     }
 
     if (localMatches.length) {
-      return {
+      return matchSourceResult({
         source: "local",
         matches: sortMatches(localMatches),
-        error: null,
-      };
+        reason: "local-cache",
+      });
     }
 
-    return {
+    return matchSourceResult({
       source: "matches",
       matches: [],
-      error: null,
-    };
+      reason: "backend-empty",
+    });
   } catch (error) {
     const localMatches = readStoredLikedMatches(userId);
 
     if (localMatches.length) {
-      return {
+      return matchSourceResult({
         source: "local",
         matches: sortMatches(localMatches),
+        reason: "backend-error-local",
         error,
-      };
+      });
     }
 
-    return {
+    return matchSourceResult({
       source: "demo",
       matches: [],
+      reason: "backend-error",
       error,
-    };
+    });
   }
 }
 
@@ -362,9 +398,9 @@ export async function loadStoredMatchSource(
     return loadUserMatches(client, userId);
   }
 
-  return {
+  return matchSourceResult({
     source: "demo",
     matches: [],
-    error: null,
-  };
+    reason: "demo-signed-out",
+  });
 }

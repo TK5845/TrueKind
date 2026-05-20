@@ -271,6 +271,10 @@ export function getUnreadSummaryFromRows(rows: MessageRow[]) {
   const messages = rows
     .map((row) => normalizeMessage(row))
     .filter((message): message is Message => Boolean(message));
+  return getUnreadSummaryFromMessages(messages);
+}
+
+export function getUnreadSummaryFromMessages(messages: Message[]) {
   const unreadMessages = messages.filter(isUnreadForCurrentUser);
   const unreadMatchIds = new Set(
     unreadMessages.map((message) => message.match_id)

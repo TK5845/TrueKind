@@ -16,12 +16,18 @@ import {
   readStoredProfile,
   writeStoredProfile,
 } from "../lib/profile-model";
+import {
+  MAX_PROFILE_IMAGE_DATA_URL_LENGTH,
+  MAX_PROFILE_VIDEO_FILE_SIZE,
+  PROFILE_IMAGE_BUCKET,
+  VIDEO_PRESENTATION_BUCKET,
+  cleanPersistedMediaUrl,
+  getProfileVideoPath,
+  getStorageErrorDetails,
+  possibleProfileVideoPaths,
+  validateMediaFile,
+} from "../lib/profile-media";
 import { createClient } from "../../utils/supabase/client";
-
-const PROFILE_IMAGE_BUCKET = "profile-images";
-const VIDEO_PRESENTATION_BUCKET = "video-presentations";
-const MAX_IMAGE_DATA_URL_LENGTH = 700_000;
-const MAX_VIDEO_FILE_SIZE = 50 * 1024 * 1024;
 
 type ProfileDraft = {
   name: string;
@@ -144,7 +150,7 @@ function draftToStoredProfile(draft: ProfileDraft) {
     favorite_song: draft.favoriteSong,
     favorite_movie: draft.favoriteFilm,
     favorite_book: draft.favoriteBook,
-    video_url: cleanPersistedVideoUrl(draft.videoPresentation),
+    video_url: cleanPersistedMediaUrl(draft.videoPresentation),
     voice_profile_url: draft.voiceUrl,
   });
 }
@@ -159,12 +165,7 @@ function saveLocalProfile(draft: ProfileDraft) {
 }
 
 function getLocalVideoUrl() {
-  return cleanPersistedVideoUrl(readStoredProfile()?.video_url ?? "");
-}
-
-function cleanPersistedVideoUrl(value: string) {
-  const trimmed = value.trim();
-  return trimmed && !trimmed.startsWith("blob:") ? trimmed : "";
+  return cleanPersistedMediaUrl(readStoredProfile()?.video_url ?? "");
 }
 
 function withTimeout<T>(promise: Promise<T>, ms: number) {
@@ -225,12 +226,12 @@ async function compressImage(file: File): Promise<string> {
   let quality = 0.72;
   let output = canvas.toDataURL("image/jpeg", quality);
 
-  while (output.length > MAX_IMAGE_DATA_URL_LENGTH && quality > 0.4) {
+  while (output.length > MAX_PROFILE_IMAGE_DATA_URL_LENGTH && quality > 0.4) {
     quality -= 0.08;
     output = canvas.toDataURL("image/jpeg", quality);
   }
 
-  if (output.length > MAX_IMAGE_DATA_URL_LENGTH) {
+  if (output.length > MAX_PROFILE_IMAGE_DATA_URL_LENGTH) {
     throw new Error("Bilden är fortfarande för stor efter komprimering.");
   }
 
@@ -302,47 +303,23 @@ async function uploadProfileImage(imageValue: string) {
   return { imageUrl: publicUrl, warning: "" };
 }
 
-function getVideoExtension(file: File) {
-  if (file.type === "video/mp4") return "mp4";
-  if (file.type === "video/webm") return "webm";
-  if (file.type === "video/quicktime") return "mov";
-
-  const extension = file.name.split(".").pop()?.trim().toLowerCase();
-  return extension && /^[a-z0-9]+$/.test(extension) ? extension : "mp4";
-}
-
-function possibleVideoPaths(userId: string) {
-  return [
-    `${userId}/video-presentation.mp4`,
-    `${userId}/video-presentation.webm`,
-    `${userId}/video-presentation.mov`,
-  ];
-}
-
-function getStorageErrorDetails(error: unknown) {
-  if (!error || typeof error !== "object") return String(error);
-
-  const record = error as Record<string, unknown>;
-  return JSON.stringify(
-    {
-      name: record.name,
-      message: record.message,
-      status: record.status,
-      statusCode: record.statusCode,
-      error: record.error,
-      code: record.code,
-    },
-    null,
-    2
-  );
-}
-
 async function uploadProfileVideo(
   videoValue: string,
   pendingVideoFile: File | null
 ) {
   if (!pendingVideoFile) {
     return { videoUrl: videoValue, error: "" };
+  }
+
+  const validationMessage = validateMediaFile(pendingVideoFile, {
+    kind: "video",
+    maxSizeBytes: MAX_PROFILE_VIDEO_FILE_SIZE,
+    invalidTypeMessage: "Välj en giltig videofil.",
+    tooLargeMessage: "Videon är för stor. Välj en fil under 50 MB.",
+  });
+
+  if (validationMessage) {
+    return { videoUrl: videoValue, error: validationMessage };
   }
 
   const supabase = createClient();
@@ -359,8 +336,7 @@ async function uploadProfileVideo(
     };
   }
 
-  const extension = getVideoExtension(pendingVideoFile);
-  const filePath = `${user.id}/video-presentation.${extension}`;
+  const filePath = getProfileVideoPath(user.id, pendingVideoFile);
   const bucket = supabase.storage.from(VIDEO_PRESENTATION_BUCKET);
 
   let { error: uploadError } = await bucket.upload(
@@ -410,7 +386,7 @@ async function uploadProfileVideo(
     };
   }
 
-  const oldPaths = possibleVideoPaths(user.id).filter(
+  const oldPaths = possibleProfileVideoPaths(user.id).filter(
     (path) => path !== filePath
   );
   if (oldPaths.length) {
@@ -540,7 +516,7 @@ function ProfileContent() {
       if (!mounted || hasUserEditedRef.current) return;
       const localDraft = loadLocalProfile() ?? emptyDraft();
       setDraft(localDraft);
-      setPersistedVideoUrl(cleanPersistedVideoUrl(localDraft.videoPresentation));
+      setPersistedVideoUrl(cleanPersistedMediaUrl(localDraft.videoPresentation));
     }
 
     window.addEventListener(
@@ -573,8 +549,14 @@ function ProfileContent() {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    if (!file.type.startsWith("image/")) {
-      setStatus("Välj en giltig bildfil.");
+    const validationMessage = validateMediaFile(file, {
+      kind: "image",
+      invalidTypeMessage: "Välj en giltig bildfil.",
+    });
+
+    if (validationMessage) {
+      setStatus(validationMessage);
+      event.target.value = "";
       return;
     }
 
@@ -621,14 +603,15 @@ function ProfileContent() {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    if (!file.type.startsWith("video/")) {
-      setStatus("Välj en giltig videofil.");
-      event.target.value = "";
-      return;
-    }
+    const validationMessage = validateMediaFile(file, {
+      kind: "video",
+      maxSizeBytes: MAX_PROFILE_VIDEO_FILE_SIZE,
+      invalidTypeMessage: "Välj en giltig videofil.",
+      tooLargeMessage: "Videon är för stor. Välj en fil under 50 MB.",
+    });
 
-    if (file.size > MAX_VIDEO_FILE_SIZE) {
-      setStatus("Videon är för stor. Välj en fil under 50 MB.");
+    if (validationMessage) {
+      setStatus(validationMessage);
       event.target.value = "";
       return;
     }
@@ -659,7 +642,7 @@ function ProfileContent() {
         return;
       }
 
-      const videoUrl = cleanPersistedVideoUrl(videoResult.videoUrl);
+      const videoUrl = cleanPersistedMediaUrl(videoResult.videoUrl);
       if (!videoUrl) {
         setStatus("Videon fick ingen sparad länk. Försök igen.");
         return;
@@ -729,12 +712,29 @@ function ProfileContent() {
       } = await supabase.auth.getUser();
 
       if (user) {
-        await supabase.storage
+        const removeResult = await supabase.storage
           .from(VIDEO_PRESENTATION_BUCKET)
-          .remove(possibleVideoPaths(user.id));
-        await upsertCurrentUserProfile({
+          .remove(possibleProfileVideoPaths(user.id));
+        const saveResult = await upsertCurrentUserProfile({
           video_url: null,
         });
+
+        if (saveResult.error) {
+          setStatus("Videon kunde inte kopplas bort från profilen just nu.");
+          return;
+        }
+
+        if (removeResult.error) {
+          console.info("[TrueKind video] Storage cleanup failed", {
+            bucket: VIDEO_PRESENTATION_BUCKET,
+            error: getStorageErrorDetails(removeResult.error),
+          });
+          setStatus(
+            "Videon är borttagen från profilen, men lagringen kunde inte städas helt just nu."
+          );
+        } else {
+          setStatus("Videopresentationen är borttagen.");
+        }
       }
 
       clearPendingVideo();
@@ -746,7 +746,9 @@ function ProfileContent() {
       patchStoredProfile({
         video_url: "",
       });
-      setStatus("Videopresentationen är borttagen.");
+      if (!user) {
+        setStatus("Videopresentationen är borttagen lokalt.");
+      }
     } catch {
       setStatus("Videopresentationen kunde inte tas bort helt just nu.");
     } finally {
