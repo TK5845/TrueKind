@@ -2,6 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "../../utils/supabase/client";
+import {
+  TRUEKIND_LOCAL_TEST_DATA_KEYS,
+  TRUEKIND_LOCAL_TEST_DATA_PREFIXES,
+} from "../lib/local-test-data";
 
 function clearMatchingStorage(prefixes: string[]) {
   try {
@@ -106,15 +110,8 @@ export default function LogoutButton() {
       "sb-",
       "supabase",
       "auth-token",
-      "truekindProfile",
-      "truekind_profile_local",
-      "truekindAccount",
-      "truekindLastMatch",
-      "truekindSelectedMatch",
-      "truekindChat_",
-      "truekindUnread_",
-      "truekindVoiceProfile",
-      "truekindVoiceMessage",
+      ...TRUEKIND_LOCAL_TEST_DATA_KEYS,
+      ...TRUEKIND_LOCAL_TEST_DATA_PREFIXES,
     ]);
 
     clearSupabaseCookies();

@@ -1,0 +1,22 @@
+
+> web@0.1.0 dev
+> next dev
+
+▲ Next.js 16.2.2 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.50.247:3000
+- Environments: .env.local
+✓ Ready in 1015ms
+
+ GET /internal/readiness 200 in 871ms (next.js: 326ms, proxy.ts: 152ms, application-code: 393ms)
+ GET / 200 in 184ms (next.js: 96ms, proxy.ts: 8ms, application-code: 81ms)
+ GET /login 200 in 164ms (next.js: 65ms, proxy.ts: 9ms, application-code: 89ms)
+ GET /register 200 in 230ms (next.js: 95ms, proxy.ts: 11ms, application-code: 125ms)
+ GET /onboarding 200 in 171ms (next.js: 67ms, proxy.ts: 11ms, application-code: 92ms)
+ GET /discover 200 in 164ms (next.js: 69ms, proxy.ts: 6ms, application-code: 89ms)
+ GET /match 200 in 138ms (next.js: 62ms, proxy.ts: 5ms, application-code: 72ms)
+ GET /matches 200 in 183ms (next.js: 94ms, proxy.ts: 6ms, application-code: 83ms)
+ GET /messages 200 in 153ms (next.js: 64ms, proxy.ts: 5ms, application-code: 84ms)
+ GET /profile 200 in 184ms (next.js: 67ms, proxy.ts: 5ms, application-code: 113ms)
+ GET /voice 200 in 152ms (next.js: 72ms, proxy.ts: 4ms, application-code: 75ms)
+ GET /internal/readiness 200 in 84ms (next.js: 5ms, proxy.ts: 7ms, application-code: 72ms)

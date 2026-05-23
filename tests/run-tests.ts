@@ -1,4 +1,6 @@
+import "./backend-readiness.test";
 import "./discover-candidate-db.test";
+import "./local-test-data.test";
 import "./match-db.test";
 import "./match-model.test";
 import "./message-model.test";

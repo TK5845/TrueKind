@@ -1,24 +1,26 @@
 "use client";
 
 import { useEffect, useState } from "react";
-
-const DEMO_TOOLS_KEY = "truekind_demo_tools";
+import {
+  DEMO_TOOLS_STORAGE_KEY,
+  clearTrueKindLocalTestData,
+} from "../lib/local-test-data";
 
 function shouldShowDemoTools() {
   const params = new URLSearchParams(window.location.search);
   const requestedDemoTools = params.get("demoTools");
 
   if (requestedDemoTools === "1") {
-    window.localStorage.setItem(DEMO_TOOLS_KEY, "1");
+    window.localStorage.setItem(DEMO_TOOLS_STORAGE_KEY, "1");
     return true;
   }
 
   if (requestedDemoTools === "0") {
-    window.localStorage.removeItem(DEMO_TOOLS_KEY);
+    window.localStorage.removeItem(DEMO_TOOLS_STORAGE_KEY);
     return false;
   }
 
-  return window.localStorage.getItem(DEMO_TOOLS_KEY) === "1";
+  return window.localStorage.getItem(DEMO_TOOLS_STORAGE_KEY) === "1";
 }
 
 export default function ResetDemoButton() {
@@ -39,24 +41,7 @@ export default function ResetDemoButton() {
 
     if (!confirmed) return;
 
-    localStorage.removeItem("truekindProfile");
-    localStorage.removeItem("truekind_profile_local");
-    localStorage.removeItem("truekindLastMatch");
-    localStorage.removeItem("truekindSelectedMatch");
-    localStorage.removeItem("truekindVoiceProfile");
-
-    const keysToRemove: string[] = [];
-
-    for (let i = 0; i < localStorage.length; i += 1) {
-      const key = localStorage.key(i);
-      if (!key) continue;
-
-      if (key.startsWith("truekindChat_") || key.startsWith("truekindUnread_")) {
-        keysToRemove.push(key);
-      }
-    }
-
-    keysToRemove.forEach((key) => localStorage.removeItem(key));
+    clearTrueKindLocalTestData(window.localStorage);
 
     window.location.href = "/";
   }

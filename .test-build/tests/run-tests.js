@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+require("./backend-readiness.test");
 require("./discover-candidate-db.test");
+require("./local-test-data.test");
 require("./match-db.test");
 require("./match-model.test");
 require("./message-model.test");
