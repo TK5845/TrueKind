@@ -44,9 +44,9 @@ const routeChecks = [
   },
   {
     id: "route.match",
-    label: "Match",
+    label: "Legacy match redirect",
     path: "/match",
-    markers: ["Match", "Det känns som en match"],
+    markers: ["Matchlista", "matchningar"],
   },
   {
     id: "route.matches",
