@@ -49,29 +49,6 @@ export type ProfileData = {
   updated_at?: string;
 };
 
-export type MatchData = {
-  match_id?: string;
-  target_profile_id?: string;
-  matchedName: string;
-  matchedCity: string;
-  matchedImage: string;
-  name?: string;
-  age?: number;
-  city?: string;
-  image?: string;
-  chemistry_label?: string;
-  about_text?: string;
-  looking_for?: string;
-  activity_label?: string;
-  interests?: string[];
-  latest_signal_text?: string;
-  latest_signal_at?: string;
-  unread_count?: number;
-  status?: string;
-  created_at?: string;
-  updated_at?: string;
-};
-
 export type ChatMessage = {
   id: string;
   from: "me" | "them";

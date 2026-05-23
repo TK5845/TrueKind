@@ -35,29 +35,6 @@ export type ProfileData = {
   updated_at?: string;
 };
 
-export type MatchData = {
-  match_id?: string;
-  target_profile_id?: string;
-  matchedName: string;
-  matchedCity: string;
-  matchedImage: string;
-  name?: string;
-  age?: number;
-  city?: string;
-  image?: string;
-  chemistry_label?: string;
-  about_text?: string;
-  looking_for?: string;
-  activity_label?: string;
-  interests?: string[];
-  latest_signal_text?: string;
-  latest_signal_at?: string;
-  unread_count?: number;
-  status?: string;
-  created_at?: string;
-  updated_at?: string;
-};
-
 export type ChatMessage = {
   id: number;
   sender: "other" | "me";
@@ -68,8 +45,6 @@ export type ChatMessage = {
 export const STORAGE_KEYS = {
   profile: PROFILE_STORAGE_KEY,
   legacyProfile: LEGACY_PROFILE_STORAGE_KEY,
-  lastMatch: "truekindLastMatch",
-  selectedMatch: "truekindSelectedMatch",
   voice: "truekindVoiceProfile",
 };
 

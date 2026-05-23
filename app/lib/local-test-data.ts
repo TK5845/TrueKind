@@ -2,12 +2,16 @@ import { STORAGE_KEYS } from "./storage";
 
 export const DEMO_TOOLS_STORAGE_KEY = "truekind_demo_tools";
 
+const LEGACY_MATCH_SELECTION_STORAGE_KEYS = [
+  "truekindLastMatch",
+  "truekindSelectedMatch",
+] as const;
+
 export const TRUEKIND_LOCAL_TEST_DATA_KEYS = [
   STORAGE_KEYS.legacyProfile,
   STORAGE_KEYS.profile,
-  STORAGE_KEYS.lastMatch,
-  STORAGE_KEYS.selectedMatch,
   STORAGE_KEYS.voice,
+  ...LEGACY_MATCH_SELECTION_STORAGE_KEYS,
   "truekindAccount",
   "truekindVoiceMessage",
 ] as const;

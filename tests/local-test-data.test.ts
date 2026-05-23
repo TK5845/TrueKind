@@ -35,6 +35,8 @@ describe("local test data keys", () => {
     assert.equal(isTrueKindLocalTestDataKey("truekindProfile"), true);
     assert.equal(isTrueKindLocalTestDataKey("truekindAccount"), true);
     assert.equal(isTrueKindLocalTestDataKey("truekindVoiceProfile"), true);
+    assert.equal(isTrueKindLocalTestDataKey("truekindLastMatch"), true);
+    assert.equal(isTrueKindLocalTestDataKey("truekindSelectedMatch"), true);
   });
 
   it("recognizes generated chat, unread, and liked match keys", () => {
