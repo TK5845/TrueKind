@@ -350,6 +350,42 @@ function printResult(result) {
   console.log(`       ${result.detail}`);
 }
 
+function getPassedCount(results) {
+  return results.filter((result) => result.status === "pass").length;
+}
+
+function getResultGroup(results, prefix) {
+  return results.filter((result) => result.id.startsWith(prefix));
+}
+
+function formatCount(results) {
+  return `${getPassedCount(results)}/${results.length}`;
+}
+
+function printSmokeSummary({ results, failures, baseUrl, timeoutMs }) {
+  const setupResults = getResultGroup(results, "setup.");
+  const routeResults = getResultGroup(results, "route.");
+  const status = failures.length ? "Fail" : "Pass";
+
+  console.log("RC smoke sammanfattning");
+  console.log(`Status: ${status}`);
+  console.log(`Kontroller: ${formatCount(results)}`);
+  console.log(`Setup: ${formatCount(setupResults)}`);
+  console.log(`Routes: ${formatCount(routeResults)}`);
+  console.log(`Base URL: ${baseUrl}`);
+  console.log(`Timeout: ${timeoutMs} ms`);
+
+  if (!failures.length) {
+    console.log("Avvikelser: Inga");
+    return;
+  }
+
+  console.log("Avvikelser:");
+  for (const failure of failures) {
+    console.log(`- ${failure.id} ${failure.label}`);
+  }
+}
+
 async function main() {
   const baseUrl = normalizeBaseUrl(
     getArg("--base-url") || process.env.TRUEKIND_SMOKE_BASE_URL
@@ -380,6 +416,9 @@ async function main() {
   results.forEach(printResult);
 
   const failures = results.filter((result) => result.status === "fail");
+
+  console.log("");
+  printSmokeSummary({ results, failures, baseUrl, timeoutMs });
 
   console.log("");
   if (failures.length) {

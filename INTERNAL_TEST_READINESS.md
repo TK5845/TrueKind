@@ -206,6 +206,8 @@ Den äldre arbetsboken `TrueKind_testplan_och_bugglogg.xlsx` kan behållas som h
 
 Rekommenderad användning är att fylla handoff sist, efter att readiness, regression, buggar och release notes är uppdaterade.
 
+Färdiga RC-pass sparas som separata Markdown-filer i `rc-evidence/`, så att mallarna i rotmappen kan vara rena och återanvändbara.
+
 ## Intern RC smoke automation
 
 `npm.cmd run smoke:rc` är en liten dependency-free kontroll för upprepade releasekandidater. Den gör bara säkra läsningar:

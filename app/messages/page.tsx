@@ -754,7 +754,15 @@ function MessagesContent() {
               </div>
               <div style={{ color: "#6d625d", fontSize: 15 }}>{selectedConversation.city}</div>
             </div>
-            <span style={pillStyle()}>{selectedConversation.chemistry}</span>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+              <span style={pillStyle()}>{selectedConversation.chemistry}</span>
+              <Link
+                href={`/matches?match=${selectedConversation.id}`}
+                style={actionLinkStyle()}
+              >
+                Visa matchning
+              </Link>
+            </div>
           </div>
 
           <div style={{ display: "grid", gap: 12, minHeight: 380, alignContent: "start" }}>

@@ -50,10 +50,12 @@ Se `INTERNAL_TEST_READINESS.md` för testkonton, miljökrav, reset-rutin och rel
 
 För interna releasekandidater finns även:
 
+- `RC_START_CHECKLIST.md` för namngivning och start av nya RC-pass
 - `REGRESSION_MATRIX_V4.md` för manuell regression av kärnflöden
 - `INTERNAL_BUG_LOG.md` för buggar, prioritet, status och retest
 - `INTERNAL_RELEASE_NOTES_TEMPLATE.md` för korta interna release notes
 - `RC_HANDOFF_TEMPLATE.md` för slutlig handoff, readiness-evidens och RC-beslut
+- `rc-evidence/` för färdiga RC-pass och beslut
 
 ## Supabase intern setup
 

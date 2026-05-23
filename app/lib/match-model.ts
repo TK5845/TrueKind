@@ -80,6 +80,23 @@ export type DiscoverCandidate = MatchView & {
   relevance_label: string;
 };
 
+export type MatchInsight = {
+  id: "feeling" | "starting-point" | "continuity";
+  label: string;
+  text: string;
+};
+
+type MatchInsightSource = {
+  name?: string;
+  chemistry_label?: string;
+  about_text?: string;
+  looking_for?: string;
+  activity_label?: string;
+  interests?: string[];
+  latest_message_text?: string;
+  latest_signal_text?: string;
+};
+
 const DEMO_TIMESTAMP = "2026-01-01T00:00:00.000Z";
 
 export const DEMO_MATCHES: CanonicalMatch[] = [
@@ -243,6 +260,74 @@ export function buildMatchViewsFromSource(
 
 function normalizeText(value: string | undefined) {
   return value?.trim().toLowerCase() ?? "";
+}
+
+function cleanInsightText(value: string | undefined) {
+  return value?.trim() ?? "";
+}
+
+function sentence(value: string) {
+  const text = value.trim();
+  if (!text) return "";
+  return /[.!?]$/.test(text) ? text : `${text}.`;
+}
+
+function formatInsightList(items: string[]) {
+  if (items.length <= 1) return items[0] ?? "";
+  if (items.length === 2) return `${items[0]} och ${items[1]}`;
+  return `${items.slice(0, -1).join(", ")} och ${items[items.length - 1]}`;
+}
+
+export function buildMatchInsights(match: MatchInsightSource): MatchInsight[] {
+  const name = cleanInsightText(match.name) || "Matchningen";
+  const chemistry = cleanInsightText(match.chemistry_label);
+  const about = cleanInsightText(match.about_text);
+  const lookingFor = cleanInsightText(match.looking_for);
+  const activity = cleanInsightText(match.activity_label);
+  const interests = (match.interests ?? [])
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .slice(0, 3);
+  const latestSignal = cleanInsightText(
+    match.latest_message_text || match.latest_signal_text
+  );
+  const insights: MatchInsight[] = [];
+
+  if (chemistry || about) {
+    insights.push({
+      id: "feeling",
+      label: "Känslan",
+      text: [sentence(chemistry), sentence(about)].filter(Boolean).join(" "),
+    });
+  }
+
+  if (interests.length || activity || lookingFor) {
+    const interestText = interests.length
+      ? `Ni kan börja i ${formatInsightList(interests)}`
+      : "Ni kan börja med ett lugnt första samtal";
+    const activityText = activity
+      ? `eller något som liknar ${activity.toLowerCase()}`
+      : "";
+    const lookingForText = lookingFor
+      ? `Det passar en kontakt där ${name} söker ${lookingFor.toLowerCase()}.`
+      : "";
+
+    insights.push({
+      id: "starting-point",
+      label: "Bra startpunkt",
+      text: `${sentence([interestText, activityText].filter(Boolean).join(" "))} ${lookingForText}`.trim(),
+    });
+  }
+
+  insights.push({
+    id: "continuity",
+    label: "Nästa steg",
+    text: latestSignal
+      ? `Senaste signalen ger er en naturlig fortsättning: "${latestSignal}"`
+      : "Det finns inget samtal ännu, så första steget kan vara enkelt, varmt och personligt.",
+  });
+
+  return insights.slice(0, 3);
 }
 
 function getCandidateScore(
