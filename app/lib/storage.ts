@@ -50,14 +50,6 @@ export const STORAGE_KEYS = {
 
 export const APP_STORAGE_EVENT = "truekind-storage-updated";
 
-export function getChatStorageKey(name: string) {
-  return `truekindChat_${name}`;
-}
-
-export function getUnreadStorageKey(name: string) {
-  return `truekindUnread_${name}`;
-}
-
 export function safeRead<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") return fallback;
 

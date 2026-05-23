@@ -39,7 +39,7 @@ describe("local test data keys", () => {
     assert.equal(isTrueKindLocalTestDataKey("truekindSelectedMatch"), true);
   });
 
-  it("recognizes generated chat, unread, and liked match keys", () => {
+  it("recognizes legacy chat, legacy unread, and liked match keys", () => {
     assert.equal(isTrueKindLocalTestDataKey("truekindChat_anna"), true);
     assert.equal(isTrueKindLocalTestDataKey("truekindUnread_anna"), true);
     assert.equal(
