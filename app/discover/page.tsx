@@ -22,6 +22,7 @@ import {
 } from "../lib/message-preview-model";
 import {
   DEMO_MATCHES,
+  buildMatchInsights,
   buildDiscoverCandidateViews,
   type CanonicalMatch,
 } from "../lib/match-model";
@@ -480,6 +481,12 @@ export default function DiscoverPage() {
     candidateMatches,
     candidateSource === "backend" ? "backend" : "demo"
   );
+  const lastLikedMatch = lastLikedMatchId
+    ? discoverCandidates.find((candidate) => candidate.match_id === lastLikedMatchId)
+    : null;
+  const lastLikedInsight = lastLikedMatch
+    ? buildMatchInsights(lastLikedMatch)[0] ?? null
+    : null;
   const profileReady = hasDiscoverReadyProfile(profile);
 
   return (
@@ -636,6 +643,25 @@ export default function DiscoverPage() {
                 >
                   Öppna samtal
                 </Link>
+              </div>
+            ) : null}
+            {lastLikedInsight ? (
+              <div
+                style={{
+                  background: "rgba(248,245,242,0.86)",
+                  borderRadius: 16,
+                  border: "1px solid rgba(231,223,218,0.95)",
+                  padding: 14,
+                  display: "grid",
+                  gap: 6,
+                }}
+              >
+                <div style={{ color: "#6d625d", fontSize: 13, fontWeight: 700 }}>
+                  {lastLikedInsight.label}
+                </div>
+                <div style={{ color: "#2f2a27", fontSize: 15, lineHeight: 1.6 }}>
+                  {lastLikedInsight.text}
+                </div>
               </div>
             ) : null}
           </div>
