@@ -86,6 +86,11 @@ export type MatchInsight = {
   text: string;
 };
 
+export type FirstMessageGuide = {
+  insight: string;
+  suggestions: string[];
+};
+
 type MatchInsightSource = {
   name?: string;
   chemistry_label?: string;
@@ -276,6 +281,77 @@ function formatInsightList(items: string[]) {
   if (items.length <= 1) return items[0] ?? "";
   if (items.length === 2) return `${items[0]} och ${items[1]}`;
   return `${items.slice(0, -1).join(", ")} och ${items[items.length - 1]}`;
+}
+
+function uniqueTextItems(items: string[]) {
+  const seen = new Set<string>();
+  const uniqueItems: string[] = [];
+
+  for (const item of items) {
+    const text = item.trim();
+    const key = normalizeText(text);
+
+    if (!text || seen.has(key)) continue;
+    seen.add(key);
+    uniqueItems.push(text);
+  }
+
+  return uniqueItems;
+}
+
+function formatLowercaseList(items: string[]) {
+  return formatInsightList(items.map((item) => item.toLowerCase()));
+}
+
+export function buildFirstMessageGuide(
+  match: Pick<
+    MatchInsightSource,
+    "name" | "interests" | "activity_label" | "chemistry_label" | "about_text"
+  >
+): FirstMessageGuide {
+  const name = cleanInsightText(match.name) || "matchningen";
+  const interests = uniqueTextItems(match.interests ?? []).slice(0, 3);
+  const activity = cleanInsightText(match.activity_label);
+  const chemistryWords = uniqueTextItems(
+    cleanInsightText(match.chemistry_label)
+      .split(",")
+      .map((item) => item.trim())
+  ).slice(0, 2);
+  const about = cleanInsightText(match.about_text);
+
+  const insightAnchor = interests.length
+    ? `${name} har redan en naturlig startpunkt i ${formatInsightList(
+        interests.slice(0, 2)
+      )}.`
+    : activity
+      ? `${name} verkar ha en enkel öppning kring ${activity.toLowerCase()}.`
+      : about
+        ? `${name}s profil ger en personlig öppning utan att du behöver skriva långt.`
+        : `Du kan börja enkelt och personligt med ${name}.`;
+  const toneHint = chemistryWords.length
+    ? ` Håll tonen ${formatLowercaseList(chemistryWords)}.`
+    : "";
+
+  const suggestions = uniqueTextItems([
+    interests[0]
+      ? `Hej ${name}, jag fastnade för ${interests[0].toLowerCase()}. Vad brukar göra det extra fint för dig?`
+      : "",
+    activity
+      ? `Hej ${name}, ${activity.toLowerCase()} låter som en fin startpunkt. Vad gillar du mest med det?`
+      : "",
+    chemistryWords.length
+      ? `Hej ${name}, din profil känns ${formatLowercaseList(
+          chemistryWords
+        )}. Jag blev nyfiken på vad som ger dig den känslan just nu.`
+      : "",
+    `Hej ${name}, jag blev nyfiken på din profil. Hur ser en riktigt bra första pratstund ut för dig?`,
+    `Hej ${name}, vill du börja enkelt? Vad har varit fint i din dag hittills?`,
+  ]).slice(0, 3);
+
+  return {
+    insight: `${insightAnchor}${toneHint}`.trim(),
+    suggestions,
+  };
 }
 
 export function buildMatchInsights(match: MatchInsightSource): MatchInsight[] {

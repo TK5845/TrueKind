@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   MATCH_STATUS,
+  buildFirstMessageGuide,
   buildMatchInsights,
   isVisibleMatch,
   isVisibleMatchStatus,
@@ -33,6 +34,38 @@ describe("match lifecycle helpers", () => {
 });
 
 describe("match insight helpers", () => {
+  it("builds first-message guidance from existing match context", () => {
+    const guide = buildFirstMessageGuide({
+      name: "Anna",
+      chemistry_label: "Varm, jordnÃ¤ra, nyfiken",
+      about_text: "Tycker om djupa samtal och tydlig energi.",
+      activity_label: "Konsert",
+      interests: ["samtal", "musik", "nÃ¤rvaro"],
+    });
+
+    assert.match(guide.insight, /Anna/);
+    assert.match(guide.insight, /samtal och musik/);
+    assert.equal(guide.suggestions.length, 3);
+    assert.match(guide.suggestions[0], /Hej Anna/);
+    assert.match(guide.suggestions[0], /samtal/);
+    assert.match(guide.suggestions[1], /konsert/i);
+  });
+
+  it("keeps first-message guidance useful with sparse match context", () => {
+    const guide = buildFirstMessageGuide({
+      name: "Sara",
+      chemistry_label: "",
+      about_text: "",
+      activity_label: "",
+      interests: [],
+    });
+
+    assert.match(guide.insight, /Sara/);
+    assert.equal(guide.suggestions.length, 2);
+    assert.match(guide.suggestions[0], /första pratstund/);
+    assert.match(guide.suggestions[1], /börja enkelt/);
+  });
+
   it("derives stable Swedish insights from existing match fields", () => {
     const insights = buildMatchInsights({
       name: "Anna",

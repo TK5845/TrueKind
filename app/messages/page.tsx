@@ -22,6 +22,7 @@ import {
   markConversationRead,
 } from "../lib/message-preview-model";
 import {
+  buildFirstMessageGuide,
   normalizeMatchId,
   type CanonicalMatch,
 } from "../lib/match-model";
@@ -378,6 +379,24 @@ function MessagesContent() {
       conversations[0]
     );
   }, [conversations, selectedId]);
+  const selectedCanonicalMatch = useMemo(() => {
+    if (!selectedConversation) return null;
+    return (
+      candidateMatches.find(
+        (match) => match.match_id === selectedConversation.id
+      ) ?? null
+    );
+  }, [candidateMatches, selectedConversation]);
+  const firstMessageGuide = useMemo(() => {
+    if (!selectedConversation) return null;
+
+    return buildFirstMessageGuide(
+      selectedCanonicalMatch ?? {
+        name: selectedConversation.name,
+        chemistry_label: selectedConversation.chemistry,
+      }
+    );
+  }, [selectedCanonicalMatch, selectedConversation]);
   const selectedConversationId = selectedConversation?.id ?? null;
   const selectedUnreadKey =
     selectedConversation?.unread_message_ids.join("|") ?? "";
@@ -790,11 +809,33 @@ function MessagesContent() {
                 <div
                   style={{ fontSize: 15, fontWeight: 700, color: "#6d625d" }}
                 >
-                  Inga meddelanden än
+                  Bra första öppning
                 </div>
                 <div style={{ color: "#5f5752", fontSize: 16, lineHeight: 1.7 }}>
-                  Det här samtalet är redo. Skriv en första rad när det känns
-                  naturligt.
+                  {firstMessageGuide?.insight ??
+                    "Det här samtalet är redo. Börja enkelt och personligt."}
+                </div>
+                <div style={{ display: "grid", gap: 8 }}>
+                  {firstMessageGuide?.suggestions.map((suggestion) => (
+                    <button
+                      key={suggestion}
+                      type="button"
+                      onClick={() => setDraftMessage(suggestion)}
+                      style={{
+                        textAlign: "left",
+                        border: "1px solid rgba(231,223,218,0.95)",
+                        background: "rgba(248,245,242,0.82)",
+                        borderRadius: 16,
+                        padding: "12px 14px",
+                        color: "#2f2a27",
+                        fontSize: 15,
+                        lineHeight: 1.6,
+                        cursor: "pointer",
+                      }}
+                    >
+                      {suggestion}
+                    </button>
+                  ))}
                 </div>
               </div>
             )}
