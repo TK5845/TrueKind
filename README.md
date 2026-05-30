@@ -57,6 +57,16 @@ För interna releasekandidater finns även:
 - `RC_HANDOFF_TEMPLATE.md` för slutlig handoff, readiness-evidens och RC-beslut
 - `rc-evidence/` för färdiga RC-pass och beslut
 
+## Supabase keepalive
+
+GitHub Actions-workflowen `.github/workflows/supabase-keepalive.yml` kör en liten schemalagd och manuell read-only request mot Supabase REST:
+
+```text
+discover_candidates?select=match_id&limit=1
+```
+
+Workflowen använder endast anon-nyckeln. Lägg till repository secrets `SUPABASE_URL` och `SUPABASE_ANON_KEY` i GitHub innan den körs.
+
 ## Supabase intern setup
 
 Kör `supabase-internal-setup.sql` i Supabase SQL editor för att skapa/uppdatera tabeller, RLS policies, storage buckets och globala Discover-kandidater.

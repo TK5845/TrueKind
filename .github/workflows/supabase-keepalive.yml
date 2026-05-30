@@ -1,0 +1,60 @@
+name: Supabase keepalive
+
+on:
+  schedule:
+    - cron: "23 7 * * 1,4"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  keepalive:
+    name: Read Supabase REST endpoint
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+    steps:
+      - name: Check required secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ -z "${SUPABASE_URL}" ]]; then
+            echo "::error::Missing required repository secret SUPABASE_URL."
+            exit 1
+          fi
+
+          if [[ -z "${SUPABASE_ANON_KEY}" ]]; then
+            echo "::error::Missing required repository secret SUPABASE_ANON_KEY."
+            exit 1
+          fi
+
+      - name: Perform safe read request
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          url="${SUPABASE_URL%/}/rest/v1/discover_candidates?select=match_id&limit=1"
+          response_file="$(mktemp)"
+          http_status="$(
+            curl \
+              --silent \
+              --show-error \
+              --output "${response_file}" \
+              --write-out "%{http_code}" \
+              --request GET \
+              "${url}" \
+              --header "apikey: ${SUPABASE_ANON_KEY}" \
+              --header "Authorization: Bearer ${SUPABASE_ANON_KEY}" \
+              --header "Accept: application/json"
+          )"
+
+          if [[ ! "${http_status}" =~ ^2[0-9][0-9]$ ]]; then
+            echo "::error::Supabase keepalive read failed with HTTP status ${http_status}."
+            cat "${response_file}"
+            exit 1
+          fi
+
+          echo "Supabase keepalive read succeeded with HTTP status ${http_status}."
