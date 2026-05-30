@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   MATCH_STATUS,
+  buildConversationContinuationGuide,
   buildFirstMessageGuide,
   buildMatchInsights,
   isVisibleMatch,
@@ -64,6 +65,47 @@ describe("match insight helpers", () => {
     assert.equal(guide.suggestions.length, 2);
     assert.match(guide.suggestions[0], /första pratstund/);
     assert.match(guide.suggestions[1], /börja enkelt/);
+  });
+
+  it("builds continuation guidance when the latest message is from them", () => {
+    const guide = buildConversationContinuationGuide({
+      name: "Anna",
+      chemistry_label: "Varm, jordnära, nyfiken",
+      interests: ["samtal", "musik"],
+      activity_label: "Konsert",
+      latest_message_text: "Hur ser en riktigt bra kväll ut för dig?",
+      latest_message_sender: "them",
+      has_unread: true,
+    });
+
+    assert.match(guide.insight, /Anna har skrivit/);
+    assert.equal(guide.suggestions.length, 2);
+    assert.match(guide.suggestions[0], /fastnade/);
+  });
+
+  it("builds continuation guidance when the latest message is from me", () => {
+    const guide = buildConversationContinuationGuide({
+      name: "Sara",
+      interests: ["kaffe"],
+      latest_message_text: "Jag hade gärna tagit den där virtuella kaffen.",
+      latest_message_sender: "me",
+      has_unread: false,
+    });
+
+    assert.match(guide.insight, /Sara har ditt senaste svar/);
+    assert.equal(guide.suggestions.length, 2);
+    assert.match(guide.suggestions[1], /kaffe/);
+  });
+
+  it("keeps continuation guidance useful with sparse context", () => {
+    const guide = buildConversationContinuationGuide({
+      latest_message_text: "Hej",
+      latest_message_sender: "them",
+    });
+
+    assert.match(guide.insight, /matchningen/);
+    assert.equal(guide.suggestions.length, 2);
+    assert.match(guide.suggestions[1], /Hur känns/);
   });
 
   it("derives stable Swedish insights from existing match fields", () => {

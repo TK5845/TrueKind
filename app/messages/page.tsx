@@ -22,6 +22,7 @@ import {
   markConversationRead,
 } from "../lib/message-preview-model";
 import {
+  buildConversationContinuationGuide,
   buildFirstMessageGuide,
   normalizeMatchId,
   type CanonicalMatch,
@@ -397,6 +398,23 @@ function MessagesContent() {
       }
     );
   }, [selectedCanonicalMatch, selectedConversation]);
+  const latestMessage =
+    selectedConversation?.messages[selectedConversation.messages.length - 1] ??
+    null;
+  const continuationGuide = useMemo(() => {
+    if (!selectedConversation || !latestMessage) return null;
+
+    return buildConversationContinuationGuide({
+      name: selectedConversation.name,
+      chemistry_label:
+        selectedCanonicalMatch?.chemistry_label ?? selectedConversation.chemistry,
+      interests: selectedCanonicalMatch?.interests,
+      activity_label: selectedCanonicalMatch?.activity_label,
+      latest_message_text: latestMessage.message_text,
+      latest_message_sender: latestMessage.sender,
+      has_unread: selectedConversation.has_unread,
+    });
+  }, [latestMessage, selectedCanonicalMatch, selectedConversation]);
   const selectedConversationId = selectedConversation?.id ?? null;
   const selectedUnreadKey =
     selectedConversation?.unread_message_ids.join("|") ?? "";
@@ -842,6 +860,41 @@ function MessagesContent() {
           </div>
 
           <div style={{ display: "grid", gap: 12, paddingTop: 12, borderTop: "1px solid rgba(231,223,218,0.95)" }}>
+            {continuationGuide && selectedConversation.messages.length ? (
+              <div style={emptyStateStyle()}>
+                <div
+                  style={{ fontSize: 15, fontWeight: 700, color: "#6d625d" }}
+                >
+                  Nästa svar
+                </div>
+                <div style={{ color: "#5f5752", fontSize: 15, lineHeight: 1.7 }}>
+                  {continuationGuide.insight}
+                </div>
+                <div style={{ display: "grid", gap: 8 }}>
+                  {continuationGuide.suggestions.map((suggestion) => (
+                    <button
+                      key={suggestion}
+                      type="button"
+                      onClick={() => setDraftMessage(suggestion)}
+                      style={{
+                        textAlign: "left",
+                        border: "1px solid rgba(231,223,218,0.95)",
+                        background: "rgba(248,245,242,0.82)",
+                        borderRadius: 16,
+                        padding: "12px 14px",
+                        color: "#2f2a27",
+                        fontSize: 15,
+                        lineHeight: 1.6,
+                        cursor: "pointer",
+                      }}
+                    >
+                      {suggestion}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
             <div className="tk-message-input-row" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto", gap: 12, alignItems: "center" }}>
               <input
                 type="text"

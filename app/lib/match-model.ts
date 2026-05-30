@@ -91,6 +91,11 @@ export type FirstMessageGuide = {
   suggestions: string[];
 };
 
+export type ConversationContinuationGuide = {
+  insight: string;
+  suggestions: string[];
+};
+
 type MatchInsightSource = {
   name?: string;
   chemistry_label?: string;
@@ -351,6 +356,65 @@ export function buildFirstMessageGuide(
   return {
     insight: `${insightAnchor}${toneHint}`.trim(),
     suggestions,
+  };
+}
+
+export function buildConversationContinuationGuide(input: {
+  name?: string;
+  chemistry_label?: string;
+  interests?: string[];
+  activity_label?: string;
+  latest_message_text?: string;
+  latest_message_sender?: "me" | "them";
+  has_unread?: boolean;
+}): ConversationContinuationGuide {
+  const name = cleanInsightText(input.name) || "matchningen";
+  const latestMessage = cleanInsightText(input.latest_message_text);
+  const latestSender = input.latest_message_sender === "me" ? "me" : "them";
+  const interests = uniqueTextItems(input.interests ?? []).slice(0, 2);
+  const activity = cleanInsightText(input.activity_label);
+  const chemistryWords = uniqueTextItems(
+    cleanInsightText(input.chemistry_label)
+      .split(",")
+      .map((item) => item.trim())
+  ).slice(0, 2);
+  const sharedAnchor = interests.length
+    ? `Ni har fortfarande en naturlig tråd i ${formatInsightList(interests)}.`
+    : activity
+      ? `${activity} kan vara en mjuk fortsättning om samtalet behöver ny riktning.`
+      : chemistryWords.length
+        ? `Låt svaret behålla känslan ${formatLowercaseList(chemistryWords)}.`
+        : "Fortsätt enkelt och närvarande utan att göra svaret för stort.";
+
+  if (latestSender === "me") {
+    return {
+      insight: `${name} har ditt senaste svar. ${sharedAnchor}`,
+      suggestions: uniqueTextItems([
+        `Jag blev nyfiken på hur du tänker om det jag skrev.`,
+        interests[0]
+          ? `Och apropå ${interests[0].toLowerCase()}, vad brukar kännas mest levande för dig där?`
+          : `Vad skulle du vilja fortsätta prata om härifrån?`,
+      ]).slice(0, 2),
+    };
+  }
+
+  return {
+    insight: input.has_unread
+      ? `${name} har skrivit. Svara gärna på det senaste först och håll det enkelt.`
+      : `${name}s senaste meddelande ger en naturlig öppning. ${sharedAnchor}`,
+    suggestions: uniqueTextItems([
+      latestMessage
+        ? `Jag fastnade för det du skrev. Berätta gärna lite mer om det.`
+        : "",
+      chemistryWords.length
+        ? `Det låter ${formatLowercaseList(
+            chemistryWords
+          )}. Jag vill gärna förstå mer.`
+        : "",
+      interests[0]
+        ? `Det får mig att tänka på ${interests[0].toLowerCase()}. Hur är det för dig?`
+        : `Hur känns det för dig just nu?`,
+    ]).slice(0, 2),
   };
 }
 
