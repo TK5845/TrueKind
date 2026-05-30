@@ -743,9 +743,12 @@ function MessagesContent() {
 
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                     {conversation.has_unread ? (
-                      <span style={pillStyle(true)}>
-                        {formatUnreadCount(conversation.unread_count)}
-                      </span>
+                      <>
+                        <span style={pillStyle(true)}>Behöver svar</span>
+                        <span style={pillStyle(true)}>
+                          {formatUnreadCount(conversation.unread_count)}
+                        </span>
+                      </>
                     ) : null}
                     <span style={pillStyle()}>{conversation.chemistry}</span>
                   </div>

@@ -455,9 +455,12 @@ function MatchesContent() {
                   </div>
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                     {match.has_unread ? (
-                      <span style={pillStyle(true)}>
-                        {formatUnreadCount(match.unread_count)}
-                      </span>
+                      <>
+                        <span style={pillStyle(true)}>Behöver svar</span>
+                        <span style={pillStyle(true)}>
+                          {formatUnreadCount(match.unread_count)}
+                        </span>
+                      </>
                     ) : null}
                     <span style={pillStyle()}>{match.chemistry_label}</span>
                   </div>
