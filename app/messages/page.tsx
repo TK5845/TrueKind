@@ -4,6 +4,7 @@ import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "../../utils/supabase/client";
+import { emptyStateStyle, pillStyle } from "../lib/list-surface-style";
 import {
   PROFILE_UPDATED_EVENT,
   readStoredProfileUi,
@@ -67,22 +68,6 @@ function formatClock(value: string) {
   });
 }
 
-function pillStyle(dark = false) {
-  return {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 8,
-    width: "fit-content" as const,
-    padding: "9px 12px",
-    borderRadius: 999,
-    border: dark ? "1px solid #111" : "1px solid rgba(231,223,218,0.95)",
-    background: dark ? "#111" : "rgba(255,255,255,0.84)",
-    color: dark ? "white" : "#3e3733",
-    fontSize: 13,
-    fontWeight: 600,
-  };
-}
-
 function actionLinkStyle(dark = false) {
   return {
     display: "inline-block",
@@ -95,18 +80,6 @@ function actionLinkStyle(dark = false) {
     textDecoration: "none",
     fontSize: 14,
     fontWeight: 700,
-  };
-}
-
-function emptyStateStyle() {
-  return {
-    background: "rgba(255,255,255,0.84)",
-    borderRadius: 24,
-    padding: 22,
-    border: "1px solid rgba(231,223,218,0.95)",
-    boxShadow: "0 10px 24px rgba(0,0,0,0.04)",
-    display: "grid",
-    gap: 12,
   };
 }
 
