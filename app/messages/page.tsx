@@ -11,6 +11,7 @@ import {
 import {
   MESSAGE_READ_STATE_UPDATED_EVENT,
   type ConversationView,
+  type MessageSender,
   type MessageRow,
   appendMessageToConversationViews,
   formatUnreadCount,
@@ -67,8 +68,12 @@ function formatClock(value: string) {
   });
 }
 
-function isFollowUpDue(latestMessageAt: string, hasUnread: boolean) {
-  if (hasUnread || !latestMessageAt) return false;
+function isFollowUpDue(
+  latestMessageAt: string,
+  hasUnread: boolean,
+  latestSender: MessageSender | null
+) {
+  if (hasUnread || !latestMessageAt || latestSender !== "me") return false;
 
   const latestTime = new Date(latestMessageAt).getTime();
   if (Number.isNaN(latestTime)) return false;
@@ -702,9 +707,13 @@ function MessagesContent() {
             {conversations.length ? (
               conversations.map((conversation) => {
               const isActive = conversation.id === selectedConversation.id;
+              const latestSender =
+                conversation.messages[conversation.messages.length - 1]
+                  ?.sender ?? null;
               const showFollowUpCue = isFollowUpDue(
                 conversation.latest_message_at,
-                conversation.has_unread
+                conversation.has_unread,
+                latestSender
               );
 
               return (

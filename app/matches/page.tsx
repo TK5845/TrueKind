@@ -11,6 +11,7 @@ import {
 import {
   MESSAGE_READ_STATE_UPDATED_EVENT,
   type ConversationView,
+  type MessageSender,
   formatUnreadCount,
 } from "../lib/message-model";
 import {
@@ -78,8 +79,14 @@ function isFollowUpDue(input: {
   hasLatestMessage: boolean;
   hasUnread: boolean;
   latestMessageAt: string;
+  latestSender: MessageSender | null;
 }) {
-  if (input.hasUnread || !input.hasLatestMessage || !input.latestMessageAt) {
+  if (
+    input.hasUnread ||
+    !input.hasLatestMessage ||
+    !input.latestMessageAt ||
+    input.latestSender !== "me"
+  ) {
     return false;
   }
 
@@ -436,10 +443,17 @@ function MatchesContent() {
             {matches.length ? (
               matches.map((match) => {
               const isActive = match.match_id === selectedMatch?.match_id;
+              const conversationView = conversationViews.find(
+                (conversation) => conversation.id === match.conversation_id
+              );
+              const latestSender =
+                conversationView?.messages[conversationView.messages.length - 1]
+                  ?.sender ?? null;
               const showFollowUpCue = isFollowUpDue({
                 hasLatestMessage: match.has_latest_message,
                 hasUnread: match.has_unread,
                 latestMessageAt: match.latest_message_at,
+                latestSender,
               });
 
               return (
