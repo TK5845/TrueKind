@@ -1,9 +1,12 @@
 import "./backend-readiness.test";
 import "./discover-candidate-db.test";
+import "./list-surface-style.test";
 import "./local-test-data.test";
 import "./match-db.test";
 import "./match-model.test";
 import "./message-model.test";
 import "./message-preview-model.test";
+import "./message-row-style.test";
+import "./profile-image.test";
 import "./profile-media.test";
 import "./profile-model.test";

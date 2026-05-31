@@ -11,6 +11,6 @@
     "rootDir": ".",
     "types": ["node"]
   },
-  "include": ["app/lib/**/*.ts", "tests/**/*.ts"],
+  "include": ["app/lib/**/*.ts", "app/lib/**/*.tsx", "tests/**/*.ts"],
   "exclude": ["node_modules", ".next", ".test-build"]
 }
