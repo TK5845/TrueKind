@@ -19,6 +19,7 @@ import {
   getDefaultConversationViews,
   loadConversationSource,
 } from "../lib/message-preview-model";
+import { MessageRowAttentionBadges } from "../lib/message-row-badges";
 import { getConversationRowEmphasisStyle } from "../lib/message-row-style";
 import {
   buildMatchInsights,
@@ -473,17 +474,11 @@ function MatchesContent() {
                     {match.preview_text}
                   </div>
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    {rowState === "needs-reply" ? (
-                      <>
-                        <span style={pillStyle(true)}>Behöver svar</span>
-                        <span style={pillStyle(true)}>
-                          {formatUnreadCount(match.unread_count)}
-                        </span>
-                      </>
-                    ) : null}
-                    {rowState === "follow-up" ? (
-                      <span style={pillStyle()}>Dags att följa upp</span>
-                    ) : null}
+                    <MessageRowAttentionBadges
+                      state={rowState}
+                      unreadCount={match.unread_count}
+                      pillStyle={pillStyle}
+                    />
                     <span style={pillStyle()}>{match.chemistry_label}</span>
                   </div>
                 </button>
