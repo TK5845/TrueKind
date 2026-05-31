@@ -38,6 +38,9 @@ type LocalProfile = {
 
 type AuthState = "unknown" | "signed-in" | "signed-out";
 
+const FOLLOW_UP_AFTER_DAYS = 7;
+const FOLLOW_UP_AFTER_MS = FOLLOW_UP_AFTER_DAYS * 24 * 60 * 60 * 1000;
+
 function readLocalProfile(): LocalProfile | null {
   const profile = readStoredProfileUi();
   if (!profile) return null;
@@ -69,6 +72,21 @@ function pillStyle(dark = false) {
     fontSize: 13,
     fontWeight: 600,
   };
+}
+
+function isFollowUpDue(input: {
+  hasLatestMessage: boolean;
+  hasUnread: boolean;
+  latestMessageAt: string;
+}) {
+  if (input.hasUnread || !input.hasLatestMessage || !input.latestMessageAt) {
+    return false;
+  }
+
+  const latestTime = new Date(input.latestMessageAt).getTime();
+  if (Number.isNaN(latestTime)) return false;
+
+  return Date.now() - latestTime >= FOLLOW_UP_AFTER_MS;
 }
 
 function actionLinkStyle(dark = false) {
@@ -418,6 +436,11 @@ function MatchesContent() {
             {matches.length ? (
               matches.map((match) => {
               const isActive = match.match_id === selectedMatch?.match_id;
+              const showFollowUpCue = isFollowUpDue({
+                hasLatestMessage: match.has_latest_message,
+                hasUnread: match.has_unread,
+                latestMessageAt: match.latest_message_at,
+              });
 
               return (
                 <button
@@ -461,6 +484,9 @@ function MatchesContent() {
                           {formatUnreadCount(match.unread_count)}
                         </span>
                       </>
+                    ) : null}
+                    {showFollowUpCue ? (
+                      <span style={pillStyle()}>Dags att följa upp</span>
                     ) : null}
                     <span style={pillStyle()}>{match.chemistry_label}</span>
                   </div>

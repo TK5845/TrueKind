@@ -40,6 +40,9 @@ type LocalProfile = {
 
 type AuthState = "unknown" | "signed-in" | "signed-out";
 
+const FOLLOW_UP_AFTER_DAYS = 7;
+const FOLLOW_UP_AFTER_MS = FOLLOW_UP_AFTER_DAYS * 24 * 60 * 60 * 1000;
+
 function readLocalProfile(): LocalProfile | null {
   const profile = readStoredProfileUi();
   if (!profile) return null;
@@ -62,6 +65,15 @@ function formatClock(value: string) {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function isFollowUpDue(latestMessageAt: string, hasUnread: boolean) {
+  if (hasUnread || !latestMessageAt) return false;
+
+  const latestTime = new Date(latestMessageAt).getTime();
+  if (Number.isNaN(latestTime)) return false;
+
+  return Date.now() - latestTime >= FOLLOW_UP_AFTER_MS;
 }
 
 function pillStyle(dark = false) {
@@ -690,6 +702,10 @@ function MessagesContent() {
             {conversations.length ? (
               conversations.map((conversation) => {
               const isActive = conversation.id === selectedConversation.id;
+              const showFollowUpCue = isFollowUpDue(
+                conversation.latest_message_at,
+                conversation.has_unread
+              );
 
               return (
                 <Link
@@ -749,6 +765,9 @@ function MessagesContent() {
                           {formatUnreadCount(conversation.unread_count)}
                         </span>
                       </>
+                    ) : null}
+                    {showFollowUpCue ? (
+                      <span style={pillStyle()}>Dags att följa upp</span>
                     ) : null}
                     <span style={pillStyle()}>{conversation.chemistry}</span>
                   </div>
