@@ -19,6 +19,7 @@ import {
   getDefaultConversationViews,
   loadConversationSource,
 } from "../lib/message-preview-model";
+import { getConversationRowEmphasisStyle } from "../lib/message-row-style";
 import {
   buildMatchInsights,
   buildMatchViewsFromSource,
@@ -432,7 +433,12 @@ function MatchesContent() {
                 latestMessageAt: match.latest_message_at,
                 latestSender: latestMessage?.sender ?? null,
               });
-              const isActionable = rowState !== "neutral";
+              const rowEmphasis = getConversationRowEmphasisStyle({
+                state: rowState,
+                isActive,
+                activeBackground: "rgba(255,255,255,0.97)",
+                neutralBackground: "rgba(255,255,255,0.82)",
+              });
 
               return (
                 <button
@@ -443,18 +449,8 @@ function MatchesContent() {
                   }}
                   style={{
                     textAlign: "left",
-                    border: isActive
-                      ? "1px solid rgba(17,17,17,0.16)"
-                      : rowState === "needs-reply"
-                        ? "1px solid rgba(17,17,17,0.24)"
-                        : rowState === "follow-up"
-                          ? "1px solid rgba(124,93,70,0.28)"
-                          : "1px solid rgba(231,223,218,0.95)",
-                    background: isActive
-                      ? "rgba(255,255,255,0.97)"
-                      : isActionable
-                        ? "rgba(255,255,255,0.94)"
-                        : "rgba(255,255,255,0.82)",
+                    border: rowEmphasis.border,
+                    background: rowEmphasis.background,
                     borderRadius: 22,
                     padding: 14,
                     cursor: "pointer",
@@ -466,14 +462,14 @@ function MatchesContent() {
                   <div className="tk-match-card-grid" style={{ display: "grid", gridTemplateColumns: "56px minmax(0, 1fr) auto", gap: 12, alignItems: "center" }}>
                     <MatchImage src={match.image} name={match.name} size={56} />
                     <div style={{ display: "grid", gap: 4 }}>
-                      <div style={{ fontWeight: isActionable ? 900 : 800, color: "#181513", fontSize: 16 }}>
+                      <div style={{ fontWeight: rowEmphasis.isActionable ? 900 : 800, color: "#181513", fontSize: 16 }}>
                         {match.name}, {match.age}
                       </div>
                       <div style={{ color: "#7b706a", fontSize: 13 }}>{match.city}</div>
                     </div>
                   </div>
 
-                  <div style={{ color: "#3e3733", fontSize: 14, lineHeight: 1.6, fontWeight: isActionable ? 700 : 400 }}>
+                  <div style={{ color: "#3e3733", fontSize: 14, lineHeight: 1.6, fontWeight: rowEmphasis.isActionable ? 700 : 400 }}>
                     {match.preview_text}
                   </div>
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>

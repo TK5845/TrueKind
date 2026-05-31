@@ -23,6 +23,7 @@ import {
   loadConversationSource,
   markConversationRead,
 } from "../lib/message-preview-model";
+import { getConversationRowEmphasisStyle } from "../lib/message-row-style";
 import {
   buildConversationContinuationGuide,
   buildFirstMessageGuide,
@@ -699,7 +700,12 @@ function MessagesContent() {
                 latestMessageAt: conversation.latest_message_at,
                 latestSender: latestMessage?.sender ?? null,
               });
-              const isActionable = rowState !== "neutral";
+              const rowEmphasis = getConversationRowEmphasisStyle({
+                state: rowState,
+                isActive,
+                activeBackground: "rgba(255,255,255,0.96)",
+                neutralBackground: "rgba(255,255,255,0.8)",
+              });
 
               return (
                 <Link
@@ -716,18 +722,8 @@ function MessagesContent() {
                   style={{
                     textAlign: "left",
                     textDecoration: "none",
-                    border: isActive
-                      ? "1px solid rgba(17,17,17,0.16)"
-                      : rowState === "needs-reply"
-                        ? "1px solid rgba(17,17,17,0.24)"
-                        : rowState === "follow-up"
-                          ? "1px solid rgba(124,93,70,0.28)"
-                          : "1px solid rgba(231,223,218,0.95)",
-                    background: isActive
-                      ? "rgba(255,255,255,0.96)"
-                      : isActionable
-                        ? "rgba(255,255,255,0.94)"
-                        : "rgba(255,255,255,0.8)",
+                    border: rowEmphasis.border,
+                    background: rowEmphasis.background,
                     borderRadius: 22,
                     padding: 14,
                     cursor: "pointer",
@@ -749,7 +745,7 @@ function MessagesContent() {
                     </div>
                   </div>
 
-                  <div style={{ color: "#3e3733", fontSize: 14, lineHeight: 1.6, fontWeight: isActionable ? 700 : 400 }}>
+                  <div style={{ color: "#3e3733", fontSize: 14, lineHeight: 1.6, fontWeight: rowEmphasis.isActionable ? 700 : 400 }}>
                     {conversation.latest_message_text}
                   </div>
 
