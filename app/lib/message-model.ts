@@ -7,6 +7,10 @@ export const MESSAGE_MINIMUM_SELECT_COLUMNS =
 export const MESSAGE_READ_STATE_UPDATED_EVENT = "truekind:message-read-state";
 
 export type MessageSender = "me" | "them";
+export type ConversationAttentionState =
+  | "needs-reply"
+  | "follow-up"
+  | "neutral";
 
 const FOLLOW_UP_AFTER_DAYS = 7;
 const FOLLOW_UP_AFTER_MS = FOLLOW_UP_AFTER_DAYS * 24 * 60 * 60 * 1000;
@@ -250,6 +254,18 @@ export function shouldShowFollowUpCue(input: {
   if (Number.isNaN(latestTime)) return false;
 
   return (input.now ?? Date.now()) - latestTime >= FOLLOW_UP_AFTER_MS;
+}
+
+export function getConversationAttentionState(input: {
+  hasUnread: boolean;
+  hasLatestMessage: boolean;
+  latestMessageAt: string;
+  latestSender: MessageSender | null;
+  now?: number;
+}): ConversationAttentionState {
+  if (input.hasUnread) return "needs-reply";
+  if (shouldShowFollowUpCue(input)) return "follow-up";
+  return "neutral";
 }
 
 export function isUnreadForCurrentUser(message: Message) {

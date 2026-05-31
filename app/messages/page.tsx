@@ -14,9 +14,9 @@ import {
   type MessageRow,
   appendMessageToConversationViews,
   formatUnreadCount,
+  getConversationAttentionState,
   getLatestMessage,
   markConversationReadInViews,
-  shouldShowFollowUpCue,
 } from "../lib/message-model";
 import {
   getDefaultConversationViews,
@@ -693,12 +693,13 @@ function MessagesContent() {
               conversations.map((conversation) => {
               const isActive = conversation.id === selectedConversation.id;
               const latestMessage = getLatestMessage(conversation.messages);
-              const showFollowUpCue = shouldShowFollowUpCue({
+              const rowState = getConversationAttentionState({
                 hasUnread: conversation.has_unread,
                 hasLatestMessage: Boolean(latestMessage),
                 latestMessageAt: conversation.latest_message_at,
                 latestSender: latestMessage?.sender ?? null,
               });
+              const isActionable = rowState !== "neutral";
 
               return (
                 <Link
@@ -717,12 +718,14 @@ function MessagesContent() {
                     textDecoration: "none",
                     border: isActive
                       ? "1px solid rgba(17,17,17,0.16)"
-                      : conversation.has_unread
+                      : rowState === "needs-reply"
                         ? "1px solid rgba(17,17,17,0.24)"
-                      : "1px solid rgba(231,223,218,0.95)",
+                        : rowState === "follow-up"
+                          ? "1px solid rgba(124,93,70,0.28)"
+                          : "1px solid rgba(231,223,218,0.95)",
                     background: isActive
                       ? "rgba(255,255,255,0.96)"
-                      : conversation.has_unread
+                      : isActionable
                         ? "rgba(255,255,255,0.94)"
                         : "rgba(255,255,255,0.8)",
                     borderRadius: 22,
@@ -746,12 +749,12 @@ function MessagesContent() {
                     </div>
                   </div>
 
-                  <div style={{ color: "#3e3733", fontSize: 14, lineHeight: 1.6, fontWeight: conversation.has_unread ? 700 : 400 }}>
+                  <div style={{ color: "#3e3733", fontSize: 14, lineHeight: 1.6, fontWeight: isActionable ? 700 : 400 }}>
                     {conversation.latest_message_text}
                   </div>
 
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    {conversation.has_unread ? (
+                    {rowState === "needs-reply" ? (
                       <>
                         <span style={pillStyle(true)}>Behöver svar</span>
                         <span style={pillStyle(true)}>
@@ -759,7 +762,7 @@ function MessagesContent() {
                         </span>
                       </>
                     ) : null}
-                    {showFollowUpCue ? (
+                    {rowState === "follow-up" ? (
                       <span style={pillStyle()}>Dags att följa upp</span>
                     ) : null}
                     <span style={pillStyle()}>{conversation.chemistry}</span>

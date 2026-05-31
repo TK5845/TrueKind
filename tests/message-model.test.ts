@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  getConversationAttentionState,
   getUnreadSummaryFromRows,
   isUnreadForCurrentUser,
   markConversationReadInViews,
@@ -159,6 +160,26 @@ describe("message attention helpers", () => {
     assert.equal(
       shouldShowFollowUpCue(followUpInput({ hasLatestMessage: false })),
       false
+    );
+  });
+
+  it("returns needs-reply for unread rows", () => {
+    assert.equal(
+      getConversationAttentionState(followUpInput({ hasUnread: true })),
+      "needs-reply"
+    );
+  });
+
+  it("returns follow-up when my latest message has gone stale", () => {
+    assert.equal(getConversationAttentionState(followUpInput()), "follow-up");
+  });
+
+  it("returns neutral for read rows without a stale latest message from me", () => {
+    assert.equal(
+      getConversationAttentionState(
+        followUpInput({ latestMessageAt: "2026-01-09T12:00:00.000Z" })
+      ),
+      "neutral"
     );
   });
 });

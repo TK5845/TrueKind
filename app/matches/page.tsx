@@ -12,8 +12,8 @@ import {
   MESSAGE_READ_STATE_UPDATED_EVENT,
   type ConversationView,
   formatUnreadCount,
+  getConversationAttentionState,
   getLatestMessage,
-  shouldShowFollowUpCue,
 } from "../lib/message-model";
 import {
   getDefaultConversationViews,
@@ -426,12 +426,13 @@ function MatchesContent() {
               const latestMessage = conversationView
                 ? getLatestMessage(conversationView.messages)
                 : null;
-              const showFollowUpCue = shouldShowFollowUpCue({
+              const rowState = getConversationAttentionState({
                 hasLatestMessage: match.has_latest_message,
                 hasUnread: match.has_unread,
                 latestMessageAt: match.latest_message_at,
                 latestSender: latestMessage?.sender ?? null,
               });
+              const isActionable = rowState !== "neutral";
 
               return (
                 <button
@@ -444,8 +445,16 @@ function MatchesContent() {
                     textAlign: "left",
                     border: isActive
                       ? "1px solid rgba(17,17,17,0.16)"
-                      : "1px solid rgba(231,223,218,0.95)",
-                    background: isActive ? "rgba(255,255,255,0.97)" : "rgba(255,255,255,0.82)",
+                      : rowState === "needs-reply"
+                        ? "1px solid rgba(17,17,17,0.24)"
+                        : rowState === "follow-up"
+                          ? "1px solid rgba(124,93,70,0.28)"
+                          : "1px solid rgba(231,223,218,0.95)",
+                    background: isActive
+                      ? "rgba(255,255,255,0.97)"
+                      : isActionable
+                        ? "rgba(255,255,255,0.94)"
+                        : "rgba(255,255,255,0.82)",
                     borderRadius: 22,
                     padding: 14,
                     cursor: "pointer",
@@ -457,18 +466,18 @@ function MatchesContent() {
                   <div className="tk-match-card-grid" style={{ display: "grid", gridTemplateColumns: "56px minmax(0, 1fr) auto", gap: 12, alignItems: "center" }}>
                     <MatchImage src={match.image} name={match.name} size={56} />
                     <div style={{ display: "grid", gap: 4 }}>
-                      <div style={{ fontWeight: 800, color: "#181513", fontSize: 16 }}>
+                      <div style={{ fontWeight: isActionable ? 900 : 800, color: "#181513", fontSize: 16 }}>
                         {match.name}, {match.age}
                       </div>
                       <div style={{ color: "#7b706a", fontSize: 13 }}>{match.city}</div>
                     </div>
                   </div>
 
-                  <div style={{ color: "#3e3733", fontSize: 14, lineHeight: 1.6 }}>
+                  <div style={{ color: "#3e3733", fontSize: 14, lineHeight: 1.6, fontWeight: isActionable ? 700 : 400 }}>
                     {match.preview_text}
                   </div>
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    {match.has_unread ? (
+                    {rowState === "needs-reply" ? (
                       <>
                         <span style={pillStyle(true)}>Behöver svar</span>
                         <span style={pillStyle(true)}>
@@ -476,7 +485,7 @@ function MatchesContent() {
                         </span>
                       </>
                     ) : null}
-                    {showFollowUpCue ? (
+                    {rowState === "follow-up" ? (
                       <span style={pillStyle()}>Dags att följa upp</span>
                     ) : null}
                     <span style={pillStyle()}>{match.chemistry_label}</span>
