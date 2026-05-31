@@ -22,6 +22,7 @@ import {
 } from "../lib/message-preview-model";
 import { MessageRowAttentionBadges } from "../lib/message-row-badges";
 import { getConversationRowEmphasisStyle } from "../lib/message-row-style";
+import { ProfileImage } from "../lib/profile-image";
 import {
   buildMatchInsights,
   buildMatchViewsFromSource,
@@ -73,62 +74,6 @@ function actionLinkStyle(dark = false) {
     fontWeight: 700,
     boxShadow: dark ? "0 10px 20px rgba(0,0,0,0.12)" : "none",
   };
-}
-
-function getInitial(name: string) {
-  return name.trim().slice(0, 1).toUpperCase() || "?";
-}
-
-function MatchImage({
-  src,
-  name,
-  size,
-  radius = "50%",
-  shadow = "",
-}: {
-  src: string;
-  name: string;
-  size: number;
-  radius?: string | number;
-  shadow?: string;
-}) {
-  const sharedStyle = {
-    width: size,
-    height: size,
-    borderRadius: radius,
-    display: "grid",
-    placeItems: "center",
-    boxShadow: shadow,
-    border: "1px solid rgba(231,223,218,0.95)",
-  };
-
-  if (src) {
-    return (
-      <img
-        src={src}
-        alt={name}
-        style={{
-          ...sharedStyle,
-          objectFit: "cover",
-          display: "block",
-        }}
-      />
-    );
-  }
-
-  return (
-    <div
-      aria-label={`${name} saknar profilbild`}
-      style={{
-        ...sharedStyle,
-        background: "linear-gradient(180deg, #efe7e2, #e8ddd6)",
-        color: "#6d625d",
-        fontWeight: 800,
-      }}
-    >
-      {getInitial(name)}
-    </div>
-  );
 }
 
 function MatchesContent() {
@@ -434,7 +379,7 @@ function MatchesContent() {
                   }}
                 >
                   <div className="tk-match-card-grid" style={{ display: "grid", gridTemplateColumns: "56px minmax(0, 1fr) auto", gap: 12, alignItems: "center" }}>
-                    <MatchImage src={match.image} name={match.name} size={56} />
+                    <ProfileImage src={match.image} name={match.name} size={56} />
                     <div style={{ display: "grid", gap: 4 }}>
                       <div style={{ fontWeight: rowEmphasis.isActionable ? 900 : 800, color: "#181513", fontSize: 16 }}>
                         {match.name}, {match.age}
@@ -492,7 +437,7 @@ function MatchesContent() {
           {selectedMatch ? (
             <>
           <div className="tk-match-detail-header" style={{ display: "grid", gridTemplateColumns: "110px minmax(0, 1fr)", gap: 18, alignItems: "center" }}>
-            <MatchImage src={selectedMatch.image} name={selectedMatch.name} size={110} radius={26} shadow="0 16px 32px rgba(0,0,0,0.12)" />
+            <ProfileImage src={selectedMatch.image} name={selectedMatch.name} size={110} radius={26} shadow="0 16px 32px rgba(0,0,0,0.12)" />
             <div style={{ display: "grid", gap: 8 }}>
               <h2 style={{ margin: 0, fontSize: 38, lineHeight: 1.05, color: "#181513" }}>
                 {selectedMatch.name}, {selectedMatch.age}

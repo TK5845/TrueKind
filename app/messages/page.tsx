@@ -25,6 +25,7 @@ import {
 } from "../lib/message-preview-model";
 import { MessageRowAttentionBadges } from "../lib/message-row-badges";
 import { getConversationRowEmphasisStyle } from "../lib/message-row-style";
+import { ProfileImage } from "../lib/profile-image";
 import {
   buildConversationContinuationGuide,
   buildFirstMessageGuide,
@@ -81,58 +82,6 @@ function actionLinkStyle(dark = false) {
     fontSize: 14,
     fontWeight: 700,
   };
-}
-
-function getInitial(name: string) {
-  return name.trim().slice(0, 1).toUpperCase() || "?";
-}
-
-function ConversationImage({
-  src,
-  name,
-  size,
-}: {
-  src: string;
-  name: string;
-  size: number;
-}) {
-  const sharedStyle = {
-    width: size,
-    height: size,
-    borderRadius: "50%",
-    border: "1px solid rgba(231,223,218,0.95)",
-  };
-
-  if (src) {
-    return (
-      <img
-        src={src}
-        alt={name}
-        style={{
-          ...sharedStyle,
-          objectFit: "cover",
-          display: "block",
-        }}
-      />
-    );
-  }
-
-  return (
-    <div
-      aria-label={`${name} saknar profilbild`}
-      style={{
-        ...sharedStyle,
-        display: "grid",
-        placeItems: "center",
-        background: "linear-gradient(180deg, #efe7e2, #e8ddd6)",
-        color: "#6d625d",
-        fontWeight: 800,
-        fontSize: size <= 36 ? 13 : 16,
-      }}
-    >
-      {getInitial(name)}
-    </div>
-  );
 }
 
 function MessagesContent() {
@@ -706,7 +655,12 @@ function MessagesContent() {
                   }}
                 >
                   <div className="tk-conversation-card-grid" style={{ display: "grid", gridTemplateColumns: "52px minmax(0, 1fr) auto", gap: 12, alignItems: "center" }}>
-                    <ConversationImage src={conversation.image} name={conversation.name} size={52} />
+                    <ProfileImage
+                      src={conversation.image}
+                      name={conversation.name}
+                      size={52}
+                      fallbackFontSize={16}
+                    />
                     <div style={{ display: "grid", gap: 4 }}>
                       <div style={{ fontWeight: 700, color: "#181513", fontSize: 16 }}>
                         {conversation.name}, {conversation.age}
@@ -765,7 +719,12 @@ function MessagesContent() {
           }}
         >
           <div className="tk-message-detail-header" style={{ display: "grid", gridTemplateColumns: "68px minmax(0, 1fr) auto", gap: 14, alignItems: "center", paddingBottom: 14, borderBottom: "1px solid rgba(231,223,218,0.95)" }}>
-            <ConversationImage src={selectedConversation.image} name={selectedConversation.name} size={68} />
+            <ProfileImage
+              src={selectedConversation.image}
+              name={selectedConversation.name}
+              size={68}
+              fallbackFontSize={16}
+            />
             <div style={{ display: "grid", gap: 6 }}>
               <div style={{ fontSize: 24, fontWeight: 800, color: "#181513" }}>
                 {selectedConversation.name}, {selectedConversation.age}
@@ -791,7 +750,14 @@ function MessagesContent() {
               return (
                 <div key={message.id} style={{ display: "grid", justifyContent: isMe ? "end" : "start" }}>
                   <div className="tk-message-bubble-row" style={{ display: "grid", gridTemplateColumns: isMe ? "minmax(0, 1fr) 36px" : "36px minmax(0, 1fr)", gap: 10, alignItems: "end", maxWidth: "78%" }}>
-                    {!isMe ? <ConversationImage src={selectedConversation.image} name={selectedConversation.name} size={36} /> : null}
+                    {!isMe ? (
+                      <ProfileImage
+                        src={selectedConversation.image}
+                        name={selectedConversation.name}
+                        size={36}
+                        fallbackFontSize={13}
+                      />
+                    ) : null}
                     <div style={{ background: isMe ? "#111" : "rgba(255,255,255,0.92)", color: isMe ? "white" : "#2f2a27", border: isMe ? "1px solid #111" : "1px solid rgba(231,223,218,0.95)", borderRadius: 22, padding: "14px 16px", lineHeight: 1.7, boxShadow: "0 8px 18px rgba(0,0,0,0.05)" }}>
                       <div style={{ fontSize: 15 }}>{message.message_text}</div>
                       <div style={{ marginTop: 8, fontSize: 12, opacity: isMe ? 0.75 : 0.55, textAlign: "right" }}>
