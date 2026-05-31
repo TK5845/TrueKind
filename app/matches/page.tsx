@@ -11,8 +11,9 @@ import {
 import {
   MESSAGE_READ_STATE_UPDATED_EVENT,
   type ConversationView,
-  type MessageSender,
   formatUnreadCount,
+  getLatestMessage,
+  shouldShowFollowUpCue,
 } from "../lib/message-model";
 import {
   getDefaultConversationViews,
@@ -38,9 +39,6 @@ type LocalProfile = {
 };
 
 type AuthState = "unknown" | "signed-in" | "signed-out";
-
-const FOLLOW_UP_AFTER_DAYS = 7;
-const FOLLOW_UP_AFTER_MS = FOLLOW_UP_AFTER_DAYS * 24 * 60 * 60 * 1000;
 
 function readLocalProfile(): LocalProfile | null {
   const profile = readStoredProfileUi();
@@ -73,27 +71,6 @@ function pillStyle(dark = false) {
     fontSize: 13,
     fontWeight: 600,
   };
-}
-
-function isFollowUpDue(input: {
-  hasLatestMessage: boolean;
-  hasUnread: boolean;
-  latestMessageAt: string;
-  latestSender: MessageSender | null;
-}) {
-  if (
-    input.hasUnread ||
-    !input.hasLatestMessage ||
-    !input.latestMessageAt ||
-    input.latestSender !== "me"
-  ) {
-    return false;
-  }
-
-  const latestTime = new Date(input.latestMessageAt).getTime();
-  if (Number.isNaN(latestTime)) return false;
-
-  return Date.now() - latestTime >= FOLLOW_UP_AFTER_MS;
 }
 
 function actionLinkStyle(dark = false) {
@@ -446,14 +423,14 @@ function MatchesContent() {
               const conversationView = conversationViews.find(
                 (conversation) => conversation.id === match.conversation_id
               );
-              const latestSender =
-                conversationView?.messages[conversationView.messages.length - 1]
-                  ?.sender ?? null;
-              const showFollowUpCue = isFollowUpDue({
+              const latestMessage = conversationView
+                ? getLatestMessage(conversationView.messages)
+                : null;
+              const showFollowUpCue = shouldShowFollowUpCue({
                 hasLatestMessage: match.has_latest_message,
                 hasUnread: match.has_unread,
                 latestMessageAt: match.latest_message_at,
-                latestSender,
+                latestSender: latestMessage?.sender ?? null,
               });
 
               return (

@@ -8,6 +8,9 @@ export const MESSAGE_READ_STATE_UPDATED_EVENT = "truekind:message-read-state";
 
 export type MessageSender = "me" | "them";
 
+const FOLLOW_UP_AFTER_DAYS = 7;
+const FOLLOW_UP_AFTER_MS = FOLLOW_UP_AFTER_DAYS * 24 * 60 * 60 * 1000;
+
 export type Message = {
   id: string;
   match_id: string;
@@ -225,6 +228,28 @@ export function getLatestMessage(messages: Message[]) {
     if (!latest) return message;
     return getTime(message.sent_at) > getTime(latest.sent_at) ? message : latest;
   }, null);
+}
+
+export function shouldShowFollowUpCue(input: {
+  hasUnread: boolean;
+  hasLatestMessage: boolean;
+  latestMessageAt: string;
+  latestSender: MessageSender | null;
+  now?: number;
+}) {
+  if (
+    input.hasUnread ||
+    !input.hasLatestMessage ||
+    !input.latestMessageAt ||
+    input.latestSender !== "me"
+  ) {
+    return false;
+  }
+
+  const latestTime = new Date(input.latestMessageAt).getTime();
+  if (Number.isNaN(latestTime)) return false;
+
+  return (input.now ?? Date.now()) - latestTime >= FOLLOW_UP_AFTER_MS;
 }
 
 export function isUnreadForCurrentUser(message: Message) {

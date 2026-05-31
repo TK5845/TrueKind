@@ -5,6 +5,7 @@ import {
   isUnreadForCurrentUser,
   markConversationReadInViews,
   normalizeMessage,
+  shouldShowFollowUpCue,
   type ConversationView,
   type MessageRow,
 } from "../app/lib/message-model";
@@ -97,5 +98,67 @@ describe("message unread helpers", () => {
     assert.equal(next[0].messages[0].is_read, true);
     assert.equal(next[0].messages[0].read_at, "2026-01-01T10:05:00.000Z");
     assert.equal(next[0].messages[1].read_at, "2026-01-01T10:01:00.000Z");
+  });
+});
+
+describe("message attention helpers", () => {
+  const now = Date.parse("2026-01-10T12:00:00.000Z");
+
+  function followUpInput(
+    overrides: Partial<Parameters<typeof shouldShowFollowUpCue>[0]> = {}
+  ): Parameters<typeof shouldShowFollowUpCue>[0] {
+    return {
+      hasUnread: false,
+      hasLatestMessage: true,
+      latestMessageAt: "2026-01-02T12:00:00.000Z",
+      latestSender: "me",
+      now,
+      ...overrides,
+    };
+  }
+
+  it("never shows follow-up for unread rows", () => {
+    assert.equal(
+      shouldShowFollowUpCue(followUpInput({ hasUnread: true })),
+      false
+    );
+  });
+
+  it("shows follow-up when my latest message has gone stale", () => {
+    assert.equal(shouldShowFollowUpCue(followUpInput()), true);
+  });
+
+  it("does not show follow-up when their latest message has gone stale", () => {
+    assert.equal(
+      shouldShowFollowUpCue(followUpInput({ latestSender: "them" })),
+      false
+    );
+  });
+
+  it("does not show follow-up when my latest message is still fresh", () => {
+    assert.equal(
+      shouldShowFollowUpCue(
+        followUpInput({ latestMessageAt: "2026-01-09T12:00:00.000Z" })
+      ),
+      false
+    );
+  });
+
+  it("does not show follow-up for missing or invalid timestamps", () => {
+    assert.equal(
+      shouldShowFollowUpCue(followUpInput({ latestMessageAt: "" })),
+      false
+    );
+    assert.equal(
+      shouldShowFollowUpCue(followUpInput({ latestMessageAt: "not-a-date" })),
+      false
+    );
+  });
+
+  it("does not show follow-up when there is no latest message", () => {
+    assert.equal(
+      shouldShowFollowUpCue(followUpInput({ hasLatestMessage: false })),
+      false
+    );
   });
 });

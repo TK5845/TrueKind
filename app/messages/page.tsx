@@ -11,11 +11,12 @@ import {
 import {
   MESSAGE_READ_STATE_UPDATED_EVENT,
   type ConversationView,
-  type MessageSender,
   type MessageRow,
   appendMessageToConversationViews,
   formatUnreadCount,
+  getLatestMessage,
   markConversationReadInViews,
+  shouldShowFollowUpCue,
 } from "../lib/message-model";
 import {
   getDefaultConversationViews,
@@ -41,9 +42,6 @@ type LocalProfile = {
 
 type AuthState = "unknown" | "signed-in" | "signed-out";
 
-const FOLLOW_UP_AFTER_DAYS = 7;
-const FOLLOW_UP_AFTER_MS = FOLLOW_UP_AFTER_DAYS * 24 * 60 * 60 * 1000;
-
 function readLocalProfile(): LocalProfile | null {
   const profile = readStoredProfileUi();
   if (!profile) return null;
@@ -66,19 +64,6 @@ function formatClock(value: string) {
     hour: "2-digit",
     minute: "2-digit",
   });
-}
-
-function isFollowUpDue(
-  latestMessageAt: string,
-  hasUnread: boolean,
-  latestSender: MessageSender | null
-) {
-  if (hasUnread || !latestMessageAt || latestSender !== "me") return false;
-
-  const latestTime = new Date(latestMessageAt).getTime();
-  if (Number.isNaN(latestTime)) return false;
-
-  return Date.now() - latestTime >= FOLLOW_UP_AFTER_MS;
 }
 
 function pillStyle(dark = false) {
@@ -707,14 +692,13 @@ function MessagesContent() {
             {conversations.length ? (
               conversations.map((conversation) => {
               const isActive = conversation.id === selectedConversation.id;
-              const latestSender =
-                conversation.messages[conversation.messages.length - 1]
-                  ?.sender ?? null;
-              const showFollowUpCue = isFollowUpDue(
-                conversation.latest_message_at,
-                conversation.has_unread,
-                latestSender
-              );
+              const latestMessage = getLatestMessage(conversation.messages);
+              const showFollowUpCue = shouldShowFollowUpCue({
+                hasUnread: conversation.has_unread,
+                hasLatestMessage: Boolean(latestMessage),
+                latestMessageAt: conversation.latest_message_at,
+                latestSender: latestMessage?.sender ?? null,
+              });
 
               return (
                 <Link
