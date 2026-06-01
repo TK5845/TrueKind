@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  buildConversationRowPreview,
   getConversationAttentionState,
   getUnreadSummaryFromRows,
   isUnreadForCurrentUser,
@@ -99,6 +100,62 @@ describe("message unread helpers", () => {
     assert.equal(next[0].messages[0].is_read, true);
     assert.equal(next[0].messages[0].read_at, "2026-01-01T10:05:00.000Z");
     assert.equal(next[0].messages[1].read_at, "2026-01-01T10:01:00.000Z");
+  });
+});
+
+describe("conversation row preview helpers", () => {
+  it("makes unread latest messages from them clearly actionable", () => {
+    assert.equal(
+      buildConversationRowPreview({
+        name: "Anna",
+        latestMessageText: "Hur ser en riktigt bra kväll ut för dig?",
+        latestSender: "them",
+        state: "needs-reply",
+      }),
+      "Anna väntar på svar: Hur ser en riktigt bra kväll ut för dig?"
+    );
+  });
+
+  it("labels my latest message without making the row feel unread", () => {
+    assert.equal(
+      buildConversationRowPreview({
+        name: "Sara",
+        latestMessageText: "Jag hör gärna mer om det.",
+        latestSender: "me",
+        state: "neutral",
+      }),
+      "Du skrev senast: Jag hör gärna mer om det."
+    );
+  });
+
+  it("uses follow-up copy when my latest message has gone stale", () => {
+    assert.equal(
+      buildConversationRowPreview({
+        name: "Elin",
+        latestMessageText: "Vill du fortsätta prata om konserter?",
+        latestSender: "me",
+        state: "follow-up",
+      }),
+      "Du kan följa upp: Vill du fortsätta prata om konserter?"
+    );
+  });
+
+  it("uses mild match context when no messages exist", () => {
+    assert.equal(
+      buildConversationRowPreview({
+        name: "Anna",
+        fallbackInterests: ["samtal", "musik", "närvaro"],
+        fallbackActivityLabel: "Konsert",
+      }),
+      "Anna har en naturlig startpunkt i samtal och musik."
+    );
+  });
+
+  it("keeps sparse no-message rows useful", () => {
+    assert.equal(
+      buildConversationRowPreview({}),
+      "Inget samtal ännu. Börja enkelt och personligt."
+    );
   });
 });
 

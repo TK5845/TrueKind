@@ -14,6 +14,7 @@ import {
   type ConversationView,
   type MessageRow,
   appendMessageToConversationViews,
+  buildConversationRowPreview,
   getConversationAttentionState,
   getLatestMessage,
   markConversationReadInViews,
@@ -622,6 +623,13 @@ function MessagesContent() {
                 latestMessageAt: conversation.latest_message_at,
                 latestSender: latestMessage?.sender ?? null,
               });
+              const rowPreview = buildConversationRowPreview({
+                name: conversation.name,
+                latestMessageText: latestMessage?.message_text,
+                latestSender: latestMessage?.sender ?? null,
+                state: rowState,
+                fallbackChemistryLabel: conversation.chemistry,
+              });
               const rowEmphasis = getConversationRowEmphasisStyle({
                 state: rowState,
                 isActive,
@@ -673,7 +681,7 @@ function MessagesContent() {
                   </div>
 
                   <div style={{ color: "#3e3733", fontSize: 14, lineHeight: 1.6, fontWeight: rowEmphasis.isActionable ? 700 : 400 }}>
-                    {conversation.latest_message_text}
+                    {rowPreview}
                   </div>
 
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>

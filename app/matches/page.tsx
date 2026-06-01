@@ -12,6 +12,7 @@ import {
 import {
   MESSAGE_READ_STATE_UPDATED_EVENT,
   type ConversationView,
+  buildConversationRowPreview,
   formatUnreadCount,
   getConversationAttentionState,
   getLatestMessage,
@@ -352,6 +353,16 @@ function MatchesContent() {
                 latestMessageAt: match.latest_message_at,
                 latestSender: latestMessage?.sender ?? null,
               });
+              const rowPreview = buildConversationRowPreview({
+                name: match.name,
+                latestMessageText: latestMessage?.message_text,
+                latestSender: latestMessage?.sender ?? null,
+                state: rowState,
+                fallbackText: match.about_text,
+                fallbackInterests: match.interests,
+                fallbackActivityLabel: match.activity_label,
+                fallbackChemistryLabel: match.chemistry_label,
+              });
               const rowEmphasis = getConversationRowEmphasisStyle({
                 state: rowState,
                 isActive,
@@ -389,7 +400,7 @@ function MatchesContent() {
                   </div>
 
                   <div style={{ color: "#3e3733", fontSize: 14, lineHeight: 1.6, fontWeight: rowEmphasis.isActionable ? 700 : 400 }}>
-                    {match.preview_text}
+                    {rowPreview}
                   </div>
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                     <MessageRowAttentionBadges

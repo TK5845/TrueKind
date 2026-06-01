@@ -57,6 +57,17 @@ export type ConversationView = ConversationPreview & {
   messages: Message[];
 };
 
+export type ConversationRowPreviewInput = {
+  name?: string;
+  latestMessageText?: string;
+  latestSender?: MessageSender | null;
+  state?: ConversationAttentionState;
+  fallbackText?: string;
+  fallbackInterests?: string[];
+  fallbackActivityLabel?: string;
+  fallbackChemistryLabel?: string;
+};
+
 function conversationProfilesFromMatches(matches = DEMO_MATCHES) {
   return matches.map((match) => ({
     id: match.match_id,
@@ -266,6 +277,77 @@ export function getConversationAttentionState(input: {
   if (input.hasUnread) return "needs-reply";
   if (shouldShowFollowUpCue(input)) return "follow-up";
   return "neutral";
+}
+
+function cleanPreviewText(value: string | undefined) {
+  return value?.trim() ?? "";
+}
+
+function formatPreviewList(items: string[]) {
+  if (items.length <= 1) return items[0] ?? "";
+  return `${items.slice(0, -1).join(", ")} och ${items[items.length - 1]}`;
+}
+
+export function buildConversationRowPreview({
+  name,
+  latestMessageText,
+  latestSender,
+  state = "neutral",
+  fallbackText,
+  fallbackInterests = [],
+  fallbackActivityLabel,
+  fallbackChemistryLabel,
+}: ConversationRowPreviewInput) {
+  const displayName = cleanPreviewText(name) || "Matchningen";
+  const latestText = cleanPreviewText(latestMessageText);
+
+  if (latestText) {
+    if (state === "needs-reply" && latestSender === "them") {
+      return `${displayName} väntar på svar: ${latestText}`;
+    }
+
+    if (state === "follow-up" && latestSender === "me") {
+      return `Du kan följa upp: ${latestText}`;
+    }
+
+    if (latestSender === "me") {
+      return `Du skrev senast: ${latestText}`;
+    }
+
+    if (latestSender === "them") {
+      return `${displayName} skrev senast: ${latestText}`;
+    }
+
+    return `Senaste meddelandet: ${latestText}`;
+  }
+
+  const interests = fallbackInterests
+    .map((item) => cleanPreviewText(item))
+    .filter(Boolean)
+    .slice(0, 2);
+  const activity = cleanPreviewText(fallbackActivityLabel);
+  const chemistry = cleanPreviewText(fallbackChemistryLabel);
+  const fallback = cleanPreviewText(fallbackText);
+
+  if (interests.length) {
+    return `${displayName} har en naturlig startpunkt i ${formatPreviewList(
+      interests
+    )}.`;
+  }
+
+  if (activity) {
+    return `Inget samtal ännu. Börja mjukt kring ${activity.toLowerCase()}.`;
+  }
+
+  if (chemistry) {
+    return `Inget samtal ännu. Tonen känns ${chemistry.toLowerCase()}.`;
+  }
+
+  if (fallback) {
+    return `Inget samtal ännu. ${fallback}`;
+  }
+
+  return "Inget samtal ännu. Börja enkelt och personligt.";
 }
 
 export function isUnreadForCurrentUser(message: Message) {
