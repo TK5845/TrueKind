@@ -327,6 +327,26 @@ function MessagesContent() {
   const latestMessage =
     selectedConversation?.messages[selectedConversation.messages.length - 1] ??
     null;
+  const selectedDetailState = selectedConversation
+    ? getConversationAttentionState({
+        hasUnread: selectedConversation.has_unread,
+        hasLatestMessage: Boolean(latestMessage),
+        latestMessageAt: selectedConversation.latest_message_at,
+        latestSender: latestMessage?.sender ?? null,
+      })
+    : "neutral";
+  const selectedDetailPreview = selectedConversation
+    ? buildConversationRowPreview({
+        name: selectedConversation.name,
+        latestMessageText: latestMessage?.message_text,
+        latestSender: latestMessage?.sender ?? null,
+        state: selectedDetailState,
+        fallbackInterests: selectedCanonicalMatch?.interests,
+        fallbackActivityLabel: selectedCanonicalMatch?.activity_label,
+        fallbackChemistryLabel:
+          selectedCanonicalMatch?.chemistry_label ?? selectedConversation.chemistry,
+      })
+    : "";
   const continuationGuide = useMemo(() => {
     if (!selectedConversation || !latestMessage) return null;
 
@@ -747,6 +767,24 @@ function MessagesContent() {
               >
                 Visa matchning
               </Link>
+            </div>
+          </div>
+
+          <div
+            style={{
+              background: "rgba(248,245,242,0.82)",
+              borderRadius: 18,
+              border: "1px solid rgba(231,223,218,0.95)",
+              padding: "14px 16px",
+              display: "grid",
+              gap: 6,
+            }}
+          >
+            <div style={{ color: "#6d625d", fontSize: 13, fontWeight: 700 }}>
+              Aktuell signal
+            </div>
+            <div style={{ color: "#2f2a27", fontSize: 15, lineHeight: 1.65 }}>
+              {selectedDetailPreview}
             </div>
           </div>
 

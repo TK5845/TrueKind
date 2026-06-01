@@ -237,6 +237,35 @@ function MatchesContent() {
   const selectedMatchInsights = selectedMatch
     ? buildMatchInsights(selectedMatch)
     : [];
+  const selectedConversationView = selectedMatch
+    ? conversationViews.find(
+        (conversation) => conversation.id === selectedMatch.conversation_id
+      ) ?? null
+    : null;
+  const selectedLatestMessage = selectedConversationView
+    ? getLatestMessage(selectedConversationView.messages)
+    : null;
+  const selectedDetailState = selectedMatch
+    ? getConversationAttentionState({
+        hasLatestMessage: selectedMatch.has_latest_message,
+        hasUnread: selectedMatch.has_unread,
+        latestMessageAt: selectedMatch.latest_message_at,
+        latestSender: selectedLatestMessage?.sender ?? null,
+      })
+    : "neutral";
+  const selectedDetailPreview = selectedMatch
+    ? buildConversationRowPreview({
+        name: selectedMatch.name,
+        latestMessageText:
+          selectedLatestMessage?.message_text ?? selectedMatch.latest_message_text,
+        latestSender: selectedLatestMessage?.sender ?? null,
+        state: selectedDetailState,
+        fallbackText: selectedMatch.about_text,
+        fallbackInterests: selectedMatch.interests,
+        fallbackActivityLabel: selectedMatch.activity_label,
+        fallbackChemistryLabel: selectedMatch.chemistry_label,
+      })
+    : "";
   const hasProfileBasics = Boolean(myProfile?.name && myProfile?.city);
 
   if (authState === "signed-out") {
@@ -464,6 +493,24 @@ function MatchesContent() {
                 <span style={pillStyle()}>💫 {selectedMatch.looking_for}</span>
                 <span style={pillStyle()}>✨ {selectedMatch.activity_label}</span>
               </div>
+            </div>
+          </div>
+
+          <div
+            style={{
+              background: "rgba(248,245,242,0.82)",
+              borderRadius: 18,
+              border: "1px solid rgba(231,223,218,0.95)",
+              padding: "14px 16px",
+              display: "grid",
+              gap: 6,
+            }}
+          >
+            <div style={{ color: "#6d625d", fontSize: 13, fontWeight: 700 }}>
+              Aktuell signal
+            </div>
+            <div style={{ color: "#2f2a27", fontSize: 15, lineHeight: 1.65 }}>
+              {selectedDetailPreview}
             </div>
           </div>
 
