@@ -336,10 +336,19 @@ export function buildFirstMessageGuide(
   const toneHint = chemistryWords.length
     ? ` Håll tonen ${formatLowercaseList(chemistryWords)}.`
     : "";
+  const primaryInterest = interests[0];
+  const secondaryInterest = interests[1];
+  const interestPair =
+    primaryInterest && secondaryInterest
+      ? formatInsightList([primaryInterest, secondaryInterest])
+      : primaryInterest;
 
   const suggestions = uniqueTextItems([
-    interests[0]
-      ? `Hej ${name}, jag fastnade för ${interests[0].toLowerCase()}. Vad brukar göra det extra fint för dig?`
+    primaryInterest
+      ? `Hej ${name}, jag fastnade för ${primaryInterest.toLowerCase()}. Vad brukar göra det extra fint för dig?`
+      : "",
+    interestPair && secondaryInterest
+      ? `Hej ${name}, jag såg ${interestPair.toLowerCase()} i din profil. Vilken av dem känns mest levande för dig just nu?`
       : "",
     activity
       ? `Hej ${name}, ${activity.toLowerCase()} låter som en fin startpunkt. Vad gillar du mest med det?`
@@ -348,6 +357,9 @@ export function buildFirstMessageGuide(
       ? `Hej ${name}, din profil känns ${formatLowercaseList(
           chemistryWords
         )}. Jag blev nyfiken på vad som ger dig den känslan just nu.`
+      : "",
+    about
+      ? `Hej ${name}, jag fastnade för hur du beskriver dig. Vad känns viktigast för dig i en första kontakt?`
       : "",
     `Hej ${name}, jag blev nyfiken på din profil. Hur ser en riktigt bra första pratstund ut för dig?`,
     `Hej ${name}, vill du börja enkelt? Vad har varit fint i din dag hittills?`,

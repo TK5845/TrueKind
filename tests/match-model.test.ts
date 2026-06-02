@@ -49,7 +49,38 @@ describe("match insight helpers", () => {
     assert.equal(guide.suggestions.length, 3);
     assert.match(guide.suggestions[0], /Hej Anna/);
     assert.match(guide.suggestions[0], /samtal/);
-    assert.match(guide.suggestions[1], /konsert/i);
+    assert.match(guide.suggestions[1], /samtal.*musik/i);
+    assert.match(guide.suggestions[2], /konsert/i);
+  });
+
+  it("prioritizes activity when first-message interests are missing", () => {
+    const guide = buildFirstMessageGuide({
+      name: "Sara",
+      chemistry_label: "Lättsam, skarp",
+      about_text: "Gillar humor och snabb kemi.",
+      activity_label: "Virtuell kaffe",
+      interests: [],
+    });
+
+    assert.match(guide.insight, /virtuell kaffe/i);
+    assert.equal(guide.suggestions.length, 3);
+    assert.match(guide.suggestions[0], /virtuell kaffe/i);
+    assert.match(guide.suggestions[1], /lättsam.*skarp/i);
+  });
+
+  it("uses about text before generic openers when context is otherwise sparse", () => {
+    const guide = buildFirstMessageGuide({
+      name: "Elin",
+      chemistry_label: "",
+      about_text: "Trivs bäst i samtal med djup och kultur.",
+      activity_label: "",
+      interests: [],
+    });
+
+    assert.match(guide.insight, /personlig öppning/);
+    assert.equal(guide.suggestions.length, 3);
+    assert.match(guide.suggestions[0], /beskriver dig/);
+    assert.match(guide.suggestions[1], /första pratstund/);
   });
 
   it("keeps first-message guidance useful with sparse match context", () => {
