@@ -45,6 +45,7 @@ type LocalProfile = {
 };
 
 type AuthState = "unknown" | "signed-in" | "signed-out";
+type DraftGuidanceStatus = "idle" | "suggestion-selected" | "sent";
 
 function readLocalProfile(): LocalProfile | null {
   const profile = readStoredProfileUi();
@@ -105,6 +106,8 @@ function MessagesContent() {
   const [hasUserSelectedConversation, setHasUserSelectedConversation] =
     useState(false);
   const [draftMessage, setDraftMessage] = useState("");
+  const [draftGuidanceStatus, setDraftGuidanceStatus] =
+    useState<DraftGuidanceStatus>("idle");
   const [saveStatus, setSaveStatus] = useState("");
   const [isSending, setIsSending] = useState(false);
 
@@ -364,6 +367,18 @@ function MessagesContent() {
   const selectedConversationId = selectedConversation?.id ?? null;
   const selectedUnreadKey =
     selectedConversation?.unread_message_ids.join("|") ?? "";
+  const draftGuidanceText =
+    draftGuidanceStatus === "suggestion-selected"
+      ? "Förslag valt. Justera gärna tonen innan du skickar."
+      : draftGuidanceStatus === "sent"
+        ? "Skickat. Du kan följa upp när det känns rätt."
+        : "";
+  const composerStatusText = saveStatus || draftGuidanceText;
+
+  useEffect(() => {
+    setDraftGuidanceStatus("idle");
+    setSaveStatus("");
+  }, [selectedConversationId]);
 
   useEffect(() => {
     const activeConversationId = selectedConversationId;
@@ -398,10 +413,23 @@ function MessagesContent() {
     void persistReadState();
   }, [selectedConversationId, selectedUnreadKey]);
 
+  function applySuggestion(suggestion: string) {
+    setDraftMessage(suggestion);
+    setDraftGuidanceStatus("suggestion-selected");
+    setSaveStatus("");
+  }
+
+  function handleDraftMessageChange(value: string) {
+    setDraftMessage(value);
+    setDraftGuidanceStatus("idle");
+    setSaveStatus("");
+  }
+
   async function handleSend() {
     const text = draftMessage.trim();
     if (!text || !selectedConversation || isSending) return;
 
+    setDraftGuidanceStatus("idle");
     setIsSending(true);
     setSaveStatus("Sparar...");
 
@@ -464,8 +492,15 @@ function MessagesContent() {
       setHasUserSelectedConversation(true);
       window.dispatchEvent(new Event(MESSAGE_READ_STATE_UPDATED_EVENT));
       window.dispatchEvent(new Event(MATCH_STATE_UPDATED_EVENT));
-      setSaveStatus("Skickat.");
-      window.setTimeout(() => setSaveStatus(""), 1200);
+      setSaveStatus("");
+      setDraftGuidanceStatus("sent");
+      window.setTimeout(
+        () =>
+          setDraftGuidanceStatus((current) =>
+            current === "sent" ? "idle" : current
+          ),
+        1800
+      );
     } catch {
       setSaveStatus("Meddelandet kunde inte skickas just nu.");
     } finally {
@@ -831,7 +866,7 @@ function MessagesContent() {
                     <button
                       key={suggestion}
                       type="button"
-                      onClick={() => setDraftMessage(suggestion)}
+                      onClick={() => applySuggestion(suggestion)}
                       style={{
                         textAlign: "left",
                         border: "1px solid rgba(231,223,218,0.95)",
@@ -868,7 +903,7 @@ function MessagesContent() {
                     <button
                       key={suggestion}
                       type="button"
-                      onClick={() => setDraftMessage(suggestion)}
+                      onClick={() => applySuggestion(suggestion)}
                       style={{
                         textAlign: "left",
                         border: "1px solid rgba(231,223,218,0.95)",
@@ -893,7 +928,9 @@ function MessagesContent() {
                 type="text"
                 placeholder={`Skriv till ${selectedConversation.name}...`}
                 value={draftMessage}
-                onChange={(event) => setDraftMessage(event.target.value)}
+                onChange={(event) =>
+                  handleDraftMessageChange(event.target.value)
+                }
                 onKeyDown={(event) => {
                   if (event.key === "Enter") {
                     event.preventDefault();
@@ -911,7 +948,7 @@ function MessagesContent() {
               <div style={{ color: "#6d625d", fontSize: 14 }}>
                 Du skriver som <strong>{myProfile?.name || "du"}</strong>
                 {!myProfile?.image ? " · ingen profilbild ännu" : ""}
-                {saveStatus ? ` · ${saveStatus}` : ""}
+                {composerStatusText ? ` · ${composerStatusText}` : ""}
               </div>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 <Link href="/discover" style={{ display: "inline-block", padding: "11px 14px", borderRadius: 12, border: "1px solid rgba(208,198,191,0.95)", textDecoration: "none", color: "#111", background: "white", fontSize: 14 }}>
