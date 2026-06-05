@@ -110,8 +110,11 @@ describe("match insight helpers", () => {
     });
 
     assert.match(guide.insight, /Anna har skrivit/);
+    assert.match(guide.insight, /samtal och musik/);
     assert.equal(guide.suggestions.length, 2);
     assert.match(guide.suggestions[0], /fastnade/);
+    assert.match(guide.suggestions[0], /samtal/);
+    assert.match(guide.suggestions[1], /konsert/i);
   });
 
   it("builds continuation guidance when the latest message is from me", () => {
@@ -125,7 +128,26 @@ describe("match insight helpers", () => {
 
     assert.match(guide.insight, /Sara har ditt senaste svar/);
     assert.equal(guide.suggestions.length, 2);
+    assert.match(guide.suggestions[0], /jag skrev/);
+    assert.match(guide.suggestions[0], /kaffe/);
     assert.match(guide.suggestions[1], /kaffe/);
+  });
+
+  it("uses activity as continuation context when interests are missing", () => {
+    const guide = buildConversationContinuationGuide({
+      name: "Elin",
+      interests: [],
+      activity_label: "Bokprat",
+      latest_message_text: "Jag läser helst något som stannar kvar.",
+      latest_message_sender: "them",
+      has_unread: false,
+    });
+
+    assert.match(guide.insight, /Bokprat/);
+    assert.equal(guide.suggestions.length, 2);
+    assert.match(guide.suggestions[0], /Elin skrev/);
+    assert.match(guide.suggestions[0], /bokprat/i);
+    assert.match(guide.suggestions[1], /bokprat/i);
   });
 
   it("keeps continuation guidance useful with sparse context", () => {

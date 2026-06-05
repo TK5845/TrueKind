@@ -390,6 +390,9 @@ export function buildConversationContinuationGuide(input: {
       .split(",")
       .map((item) => item.trim())
   ).slice(0, 2);
+  const primaryInterest = interests[0];
+  const secondaryInterest = interests[1];
+  const lowercaseActivity = activity.toLowerCase();
   const sharedAnchor = interests.length
     ? `Ni har fortfarande en naturlig tråd i ${formatInsightList(interests)}.`
     : activity
@@ -397,34 +400,61 @@ export function buildConversationContinuationGuide(input: {
       : chemistryWords.length
         ? `Låt svaret behålla känslan ${formatLowercaseList(chemistryWords)}.`
         : "Fortsätt enkelt och närvarande utan att göra svaret för stort.";
+  const latestReplyAnchor = primaryInterest
+    ? `det ${name} skrev och ${primaryInterest.toLowerCase()}`
+    : activity
+      ? `det ${name} skrev och ${lowercaseActivity}`
+      : chemistryWords.length
+        ? `det ${name} skrev med en ${formatLowercaseList(chemistryWords)} ton`
+        : `det ${name} skrev`;
+  const myReplyAnchor = primaryInterest
+    ? `det jag skrev, särskilt kring ${primaryInterest.toLowerCase()}`
+    : activity
+      ? `det jag skrev och ${lowercaseActivity}`
+      : chemistryWords.length
+        ? `det jag skrev, med samma ${formatLowercaseList(chemistryWords)} känsla`
+        : "det jag skrev";
 
   if (latestSender === "me") {
     return {
       insight: `${name} har ditt senaste svar. ${sharedAnchor}`,
       suggestions: uniqueTextItems([
-        `Jag blev nyfiken på hur du tänker om det jag skrev.`,
-        interests[0]
-          ? `Och apropå ${interests[0].toLowerCase()}, vad brukar kännas mest levande för dig där?`
-          : `Vad skulle du vilja fortsätta prata om härifrån?`,
+        latestMessage
+          ? `Jag blev nyfiken på hur du tänker om ${myReplyAnchor}.`
+          : `Jag blev nyfiken på hur du tänker vidare här.`,
+        secondaryInterest
+          ? `Och apropå ${secondaryInterest.toLowerCase()}, vad brukar kännas mest levande för dig där?`
+          : primaryInterest
+            ? `Vad skulle du vilja fortsätta upptäcka kring ${primaryInterest.toLowerCase()}?`
+            : activity
+              ? `Skulle ${lowercaseActivity} kännas som en fin fortsättning för dig?`
+              : chemistryWords.length
+                ? `Vad skulle göra samtalet ${formatLowercaseList(
+                    chemistryWords
+                  )} för dig?`
+                : `Vad skulle du vilja fortsätta prata om härifrån?`,
       ]).slice(0, 2),
     };
   }
 
   return {
     insight: input.has_unread
-      ? `${name} har skrivit. Svara gärna på det senaste först och håll det enkelt.`
+      ? `${name} har skrivit. Svara gärna på det senaste först. ${sharedAnchor}`
       : `${name}s senaste meddelande ger en naturlig öppning. ${sharedAnchor}`,
     suggestions: uniqueTextItems([
       latestMessage
-        ? `Jag fastnade för det du skrev. Berätta gärna lite mer om det.`
+        ? `Jag fastnade för ${latestReplyAnchor}. Berätta gärna lite mer.`
+        : "",
+      activity
+        ? `Det du skrev får mig att tänka på ${lowercaseActivity}. Vad skulle kännas enkelt för dig där?`
         : "",
       chemistryWords.length
         ? `Det låter ${formatLowercaseList(
             chemistryWords
-          )}. Jag vill gärna förstå mer.`
+          )}. Jag vill gärna förstå mer om det du menar.`
         : "",
-      interests[0]
-        ? `Det får mig att tänka på ${interests[0].toLowerCase()}. Hur är det för dig?`
+      primaryInterest
+        ? `Det får mig att tänka på ${primaryInterest.toLowerCase()}. Hur är det för dig?`
         : `Hur känns det för dig just nu?`,
     ]).slice(0, 2),
   };
