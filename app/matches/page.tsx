@@ -505,18 +505,31 @@ function MatchesContent() {
           </div>
 
           <div style={{ background: "rgba(255,255,255,0.84)", borderRadius: 24, padding: 22, border: "1px solid rgba(231,223,218,0.95)", display: "grid", gap: 12 }}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: "#6d625d" }}>
-              Mer om {selectedMatch.name}
+            <div style={{ display: "grid", gap: 5 }}>
+              <div style={{ fontSize: 15, fontWeight: 700, color: "#6d625d" }}>
+                Bra ingångar med {selectedMatch.name}
+              </div>
+              <div style={{ color: "#5f5752", fontSize: 15, lineHeight: 1.65 }}>
+                Börja med det som redan finns mellan er och håll nästa steg
+                enkelt.
+              </div>
             </div>
-            <div style={{ display: "grid", gap: 12 }}>
+            <div style={{ display: "grid", gap: 10 }}>
               {selectedMatchInsights.map((insight) => (
                 <div
                   key={insight.id}
                   style={{
-                    background: "rgba(248,245,242,0.82)",
+                    background:
+                      insight.id === "starting-point"
+                        ? "rgba(255,250,246,0.94)"
+                        : "rgba(248,245,242,0.82)",
                     borderRadius: 18,
                     border: "1px solid rgba(231,223,218,0.95)",
-                    padding: 16,
+                    borderLeft:
+                      insight.id === "starting-point"
+                        ? "4px solid rgba(197,122,81,0.76)"
+                        : "1px solid rgba(231,223,218,0.95)",
+                    padding: "15px 16px",
                     display: "grid",
                     gap: 6,
                   }}
