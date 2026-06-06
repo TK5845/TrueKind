@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   buildConversationRowPreview,
+  buildSelectedConversationContext,
   getConversationAttentionState,
   getUnreadSummaryFromRows,
   isUnreadForCurrentUser,
@@ -156,6 +157,95 @@ describe("conversation row preview helpers", () => {
       buildConversationRowPreview({}),
       "Inget samtal ännu. Börja enkelt och personligt."
     );
+  });
+});
+
+describe("selected conversation context helpers", () => {
+  const now = Date.parse("2026-01-10T12:00:00.000Z");
+
+  it("keeps unread latest messages from them in needs-reply context", () => {
+    const context = buildSelectedConversationContext({
+      name: "Anna",
+      latestMessageText: "Hur ser en riktigt bra kväll ut för dig?",
+      latestSender: "them",
+      hasUnread: true,
+      hasLatestMessage: true,
+      latestMessageAt: "2026-01-10T09:31:00.000Z",
+      now,
+    });
+
+    assert.deepEqual(context, {
+      state: "needs-reply",
+      preview:
+        "Anna väntar på svar: Hur ser en riktigt bra kväll ut för dig?",
+    });
+  });
+
+  it("keeps stale latest messages from me in follow-up context", () => {
+    const context = buildSelectedConversationContext({
+      name: "Elin",
+      latestMessageText: "Vill du fortsätta prata om konserter?",
+      latestSender: "me",
+      hasUnread: false,
+      hasLatestMessage: true,
+      latestMessageAt: "2026-01-02T12:00:00.000Z",
+      now,
+    });
+
+    assert.deepEqual(context, {
+      state: "follow-up",
+      preview: "Du kan följa upp: Vill du fortsätta prata om konserter?",
+    });
+  });
+
+  it("keeps recent latest conversations neutral", () => {
+    const context = buildSelectedConversationContext({
+      name: "Sara",
+      latestMessageText: "Jag hade gärna tagit den där virtuella kaffen.",
+      latestSender: "them",
+      hasUnread: false,
+      hasLatestMessage: true,
+      latestMessageAt: "2026-01-10T11:00:00.000Z",
+      now,
+    });
+
+    assert.deepEqual(context, {
+      state: "neutral",
+      preview:
+        "Sara skrev senast: Jag hade gärna tagit den där virtuella kaffen.",
+    });
+  });
+
+  it("uses useful match context when there is no latest message", () => {
+    const context = buildSelectedConversationContext({
+      name: "Anna",
+      latestSender: null,
+      hasUnread: false,
+      hasLatestMessage: false,
+      latestMessageAt: "",
+      fallbackInterests: ["samtal", "musik", "närvaro"],
+      fallbackActivityLabel: "Konsert",
+      now,
+    });
+
+    assert.deepEqual(context, {
+      state: "neutral",
+      preview: "Anna har en naturlig startpunkt i samtal och musik.",
+    });
+  });
+
+  it("keeps sparse fallback context safe and Swedish", () => {
+    const context = buildSelectedConversationContext({
+      hasUnread: false,
+      hasLatestMessage: false,
+      latestMessageAt: "",
+      now,
+    });
+
+    assert.deepEqual(context, {
+      state: "neutral",
+      preview: "Inget samtal ännu. Börja enkelt och personligt.",
+    });
   });
 });
 
