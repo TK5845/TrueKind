@@ -466,47 +466,70 @@ export function buildMatchInsights(match: MatchInsightSource): MatchInsight[] {
   const about = cleanInsightText(match.about_text);
   const lookingFor = cleanInsightText(match.looking_for);
   const activity = cleanInsightText(match.activity_label);
-  const interests = (match.interests ?? [])
-    .map((item) => item.trim())
-    .filter(Boolean)
-    .slice(0, 3);
+  const interests = uniqueTextItems(match.interests ?? []).slice(0, 3);
   const latestSignal = cleanInsightText(
     match.latest_message_text || match.latest_signal_text
   );
   const insights: MatchInsight[] = [];
 
-  if (chemistry || about) {
-    insights.push({
-      id: "feeling",
-      label: "Känslan",
-      text: [sentence(chemistry), sentence(about)].filter(Boolean).join(" "),
-    });
-  }
-
-  if (interests.length || activity || lookingFor) {
-    const interestText = interests.length
-      ? `Ni kan börja i ${formatInsightList(interests)}`
-      : "Ni kan börja med ett lugnt första samtal";
-    const activityText = activity
-      ? `eller något som liknar ${activity.toLowerCase()}`
-      : "";
-    const lookingForText = lookingFor
-      ? `Det passar en kontakt där ${name} söker ${lookingFor.toLowerCase()}.`
-      : "";
+  if (interests.length || activity || lookingFor || about) {
+    const startingPoints = [
+      interests.length
+        ? `Ni har redan konkreta gemensamma spår i ${formatInsightList(interests)}`
+        : "",
+      activity
+        ? interests.length
+          ? `${activity} kan bli en enkel väg in i samtalet`
+          : `Börja i ${activity.toLowerCase()}, eftersom det ger något konkret att fråga om`
+        : "",
+      lookingFor
+        ? `${name} söker ${lookingFor.toLowerCase()}, så låt öppningen ligga nära det`
+        : "",
+      about && !interests.length && !activity
+        ? `Profiltexten ger en personlig krok: ${sentence(about)}`
+        : "",
+    ];
 
     insights.push({
       id: "starting-point",
       label: "Bra startpunkt",
-      text: `${sentence([interestText, activityText].filter(Boolean).join(" "))} ${lookingForText}`.trim(),
+      text: uniqueTextItems(startingPoints).map(sentence).join(" "),
     });
   }
+
+  if (chemistry || (about && (interests.length || activity))) {
+    insights.push({
+      id: "feeling",
+      label: "Känslan",
+      text: [
+        chemistry ? `Känslan i profilen: ${sentence(chemistry)}` : "",
+        about && (interests.length || activity)
+          ? `Det syns också i profilen: ${sentence(about)}`
+          : "",
+      ]
+        .filter(Boolean)
+        .join(" "),
+    });
+  }
+
+  const nextStep = interests[0]
+    ? `Nästa steg kan vara att plocka upp ${interests[0].toLowerCase()} med en konkret fråga.`
+    : activity
+      ? `Nästa steg kan vara att göra ${activity.toLowerCase()} enkelt: fråga vad som skulle kännas lätt att börja med.`
+      : chemistry
+        ? `Nästa steg kan vara att hålla tonen nära ${chemistry.toLowerCase()} och fråga något personligt men lätt.`
+        : lookingFor
+          ? `Nästa steg kan vara att fråga vad ${lookingFor.toLowerCase()} betyder i praktiken för ${name}.`
+          : about
+            ? "Nästa steg kan vara att plocka upp något från profiltexten och fråga vidare där."
+            : "Det finns inget samtal ännu, så första steget kan vara enkelt, varmt och personligt.";
 
   insights.push({
     id: "continuity",
     label: "Nästa steg",
     text: latestSignal
-      ? `Senaste signalen ger er en naturlig fortsättning: "${latestSignal}"`
-      : "Det finns inget samtal ännu, så första steget kan vara enkelt, varmt och personligt.",
+      ? `Senaste signalen ger er en naturlig fortsättning. Plocka upp: "${latestSignal}"`
+      : nextStep,
   });
 
   return insights.slice(0, 3);

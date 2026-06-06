@@ -161,7 +161,7 @@ describe("match insight helpers", () => {
     assert.match(guide.suggestions[1], /Hur känns/);
   });
 
-  it("derives stable Swedish insights from existing match fields", () => {
+  it("prioritizes shared interests for interest-rich matches", () => {
     const insights = buildMatchInsights({
       name: "Anna",
       chemistry_label: "Varm, jordnära, nyfiken",
@@ -173,31 +173,65 @@ describe("match insight helpers", () => {
     });
 
     assert.deepEqual(
-      insights.map((insight) => insight.label),
-      ["Känslan", "Bra startpunkt", "Nästa steg"]
+      insights.map((insight) => insight.id),
+      ["starting-point", "feeling", "continuity"]
     );
-    assert.match(insights[0].text, /Varm, jordnära, nyfiken/);
-    assert.match(insights[1].text, /samtal, musik och närvaro/);
-    assert.match(insights[1].text, /djupare kontakt/);
+    assert.match(insights[0].text, /gemensamma spår/);
+    assert.match(insights[0].text, /samtal, musik och närvaro/);
+    assert.match(insights[0].text, /Konsert/);
+    assert.match(insights[0].text, /djupare kontakt/);
+    assert.match(insights[1].text, /Varm, jordnära, nyfiken/);
     assert.match(insights[2].text, /Jag gillade verkligen din röstprofil/);
   });
 
-  it("keeps a useful first-step insight when messages are missing", () => {
+  it("uses activity as a specific start when interests are missing", () => {
+    const insights = buildMatchInsights({
+      name: "Elin",
+      activity_label: "Bokprat",
+    });
+
+    assert.deepEqual(
+      insights.map((insight) => insight.id),
+      ["starting-point", "continuity"]
+    );
+    assert.match(insights[0].text, /Börja i bokprat/);
+    assert.match(insights[0].text, /konkret att fråga om/);
+    assert.match(insights[1].text, /göra bokprat enkelt/);
+  });
+
+  it("keeps chemistry useful when concrete start hooks are missing", () => {
     const insights = buildMatchInsights({
       name: "Sara",
       chemistry_label: "Lättsam, skarp, social",
-      about_text: "Gillar humor och snabb kemi.",
-      looking_for: "Någon att lära känna",
-      activity_label: "Virtuell kaffe",
-      interests: ["kaffe"],
     });
 
-    assert.equal(insights.length, 3);
-    assert.equal(insights[2].id, "continuity");
-    assert.match(insights[2].text, /inget samtal ännu/);
+    assert.deepEqual(
+      insights.map((insight) => insight.id),
+      ["feeling", "continuity"]
+    );
+    assert.match(insights[0].text, /Känslan i profilen/);
+    assert.match(insights[0].text, /Lättsam, skarp, social/);
+    assert.match(insights[1].text, /hålla tonen nära lättsam, skarp, social/);
   });
 
-  it("does not invent empty feeling or starting-point insights", () => {
+  it("uses looking-for and about text before generic fallback", () => {
+    const insights = buildMatchInsights({
+      name: "Mira",
+      looking_for: "Långvarig relation",
+      about_text: "Vill bygga något tryggt och nyfiket.",
+    });
+
+    assert.deepEqual(
+      insights.map((insight) => insight.id),
+      ["starting-point", "continuity"]
+    );
+    assert.match(insights[0].text, /Mira söker långvarig relation/);
+    assert.match(insights[0].text, /Profiltexten ger en personlig krok/);
+    assert.match(insights[0].text, /Vill bygga något tryggt och nyfiket/);
+    assert.match(insights[1].text, /långvarig relation betyder i praktiken/);
+  });
+
+  it("keeps sparse data fallback warm without inventing stronger signals", () => {
     const insights = buildMatchInsights({});
 
     assert.deepEqual(insights, [
