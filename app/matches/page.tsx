@@ -573,28 +573,34 @@ function MatchesContent() {
                 Inget samtal ännu
               </div>
               <div style={{ color: "#5f5752", fontSize: 16, lineHeight: 1.7 }}>
-                När ni börjar skriva visas senaste signalen här. Du kan öppna
-                samtalet när det känns rätt.
+                Ta med en av ingångarna ovan och börja enkelt. När ni skriver
+                visas senaste signalen här.
               </div>
               <Link
                 href={`/messages?match=${selectedMatch.conversation_id}`}
                 style={actionLinkStyle()}
               >
-                Öppna samtal
+                Starta samtalet
               </Link>
             </div>
           )}
 
-          <div className="tk-action-row" style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-            <Link href={`/messages?match=${selectedMatch.conversation_id}`} style={{ display: "inline-block", padding: "15px 20px", background: "#111", color: "white", borderRadius: 14, textDecoration: "none", fontWeight: 700, boxShadow: "0 10px 20px rgba(0,0,0,0.12)" }}>
-              Öppna samtal
-            </Link>
-            <Link href="/discover" style={{ display: "inline-block", padding: "15px 20px", borderRadius: 14, border: "1px solid rgba(208,198,191,0.95)", textDecoration: "none", color: "#111", background: "white" }}>
-              Till discover
-            </Link>
-            <Link href="/profile" style={{ display: "inline-block", padding: "15px 20px", borderRadius: 14, border: "1px solid rgba(208,198,191,0.95)", textDecoration: "none", color: "#111", background: "white" }}>
-              Till profil
-            </Link>
+          <div style={{ display: "grid", gap: 10 }}>
+            <div style={{ color: "#5f5752", fontSize: 15, lineHeight: 1.6 }}>
+              När du går vidare följer matchningen med, så samtalet öppnas på
+              rätt person.
+            </div>
+            <div className="tk-action-row" style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+              <Link href={`/messages?match=${selectedMatch.conversation_id}`} style={{ display: "inline-block", padding: "15px 20px", background: "#111", color: "white", borderRadius: 14, textDecoration: "none", fontWeight: 700, boxShadow: "0 10px 20px rgba(0,0,0,0.12)" }}>
+                Fortsätt till samtalet
+              </Link>
+              <Link href="/discover" style={{ display: "inline-block", padding: "15px 20px", borderRadius: 14, border: "1px solid rgba(208,198,191,0.95)", textDecoration: "none", color: "#111", background: "white" }}>
+                Till discover
+              </Link>
+              <Link href="/profile" style={{ display: "inline-block", padding: "15px 20px", borderRadius: 14, border: "1px solid rgba(208,198,191,0.95)", textDecoration: "none", color: "#111", background: "white" }}>
+                Till profil
+              </Link>
+            </div>
           </div>
             </>
           ) : (
