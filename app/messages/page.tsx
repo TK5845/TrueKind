@@ -28,6 +28,7 @@ import {
 import { MessageRowAttentionBadges } from "../lib/message-row-badges";
 import { getConversationRowEmphasisStyle } from "../lib/message-row-style";
 import { ProfileImage } from "../lib/profile-image";
+import { SelectedContextPanel } from "../lib/selected-context-panel";
 import {
   buildConversationContinuationGuide,
   buildFirstMessageGuide,
@@ -801,23 +802,7 @@ function MessagesContent() {
             </div>
           </div>
 
-          <div
-            style={{
-              background: "rgba(248,245,242,0.82)",
-              borderRadius: 18,
-              border: "1px solid rgba(231,223,218,0.95)",
-              padding: "14px 16px",
-              display: "grid",
-              gap: 6,
-            }}
-          >
-            <div style={{ color: "#6d625d", fontSize: 13, fontWeight: 700 }}>
-              Aktuell signal
-            </div>
-            <div style={{ color: "#2f2a27", fontSize: 15, lineHeight: 1.65 }}>
-              {selectedDetailPreview}
-            </div>
-          </div>
+          <SelectedContextPanel preview={selectedDetailPreview} />
 
           <div style={{ display: "grid", gap: 12, minHeight: 380, alignContent: "start" }}>
             {selectedConversation.messages.length ? (
