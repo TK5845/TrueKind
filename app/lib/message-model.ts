@@ -68,6 +68,21 @@ export type ConversationRowPreviewInput = {
   fallbackChemistryLabel?: string;
 };
 
+export type SelectedConversationContextInput = Omit<
+  ConversationRowPreviewInput,
+  "state"
+> & {
+  hasUnread: boolean;
+  hasLatestMessage: boolean;
+  latestMessageAt: string;
+  now?: number;
+};
+
+export type SelectedConversationContext = {
+  state: ConversationAttentionState;
+  preview: string;
+};
+
 function conversationProfilesFromMatches(matches = DEMO_MATCHES) {
   return matches.map((match) => ({
     id: match.match_id,
@@ -348,6 +363,42 @@ export function buildConversationRowPreview({
   }
 
   return "Inget samtal ännu. Börja enkelt och personligt.";
+}
+
+export function buildSelectedConversationContext({
+  name,
+  latestMessageText,
+  latestSender = null,
+  hasUnread,
+  hasLatestMessage,
+  latestMessageAt,
+  fallbackText,
+  fallbackInterests,
+  fallbackActivityLabel,
+  fallbackChemistryLabel,
+  now,
+}: SelectedConversationContextInput): SelectedConversationContext {
+  const state = getConversationAttentionState({
+    hasUnread,
+    hasLatestMessage,
+    latestMessageAt,
+    latestSender,
+    now,
+  });
+
+  return {
+    state,
+    preview: buildConversationRowPreview({
+      name,
+      latestMessageText,
+      latestSender,
+      state,
+      fallbackText,
+      fallbackInterests,
+      fallbackActivityLabel,
+      fallbackChemistryLabel,
+    }),
+  };
 }
 
 export function isUnreadForCurrentUser(message: Message) {

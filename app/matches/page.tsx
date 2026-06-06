@@ -13,6 +13,7 @@ import {
   MESSAGE_READ_STATE_UPDATED_EVENT,
   type ConversationView,
   buildConversationRowPreview,
+  buildSelectedConversationContext,
   formatUnreadCount,
   getConversationAttentionState,
   getLatestMessage,
@@ -245,27 +246,22 @@ function MatchesContent() {
   const selectedLatestMessage = selectedConversationView
     ? getLatestMessage(selectedConversationView.messages)
     : null;
-  const selectedDetailState = selectedMatch
-    ? getConversationAttentionState({
-        hasLatestMessage: selectedMatch.has_latest_message,
-        hasUnread: selectedMatch.has_unread,
-        latestMessageAt: selectedMatch.latest_message_at,
-        latestSender: selectedLatestMessage?.sender ?? null,
-      })
-    : "neutral";
-  const selectedDetailPreview = selectedMatch
-    ? buildConversationRowPreview({
+  const selectedDetailContext = selectedMatch
+    ? buildSelectedConversationContext({
         name: selectedMatch.name,
         latestMessageText:
           selectedLatestMessage?.message_text ?? selectedMatch.latest_message_text,
         latestSender: selectedLatestMessage?.sender ?? null,
-        state: selectedDetailState,
+        hasLatestMessage: selectedMatch.has_latest_message,
+        hasUnread: selectedMatch.has_unread,
+        latestMessageAt: selectedMatch.latest_message_at,
         fallbackText: selectedMatch.about_text,
         fallbackInterests: selectedMatch.interests,
         fallbackActivityLabel: selectedMatch.activity_label,
         fallbackChemistryLabel: selectedMatch.chemistry_label,
       })
-    : "";
+    : null;
+  const selectedDetailPreview = selectedDetailContext?.preview ?? "";
   const hasProfileBasics = Boolean(myProfile?.name && myProfile?.city);
 
   if (authState === "signed-out") {

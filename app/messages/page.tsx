@@ -15,6 +15,7 @@ import {
   type MessageRow,
   appendMessageToConversationViews,
   buildConversationRowPreview,
+  buildSelectedConversationContext,
   getConversationAttentionState,
   getLatestMessage,
   markConversationReadInViews,
@@ -330,26 +331,21 @@ function MessagesContent() {
   const latestMessage =
     selectedConversation?.messages[selectedConversation.messages.length - 1] ??
     null;
-  const selectedDetailState = selectedConversation
-    ? getConversationAttentionState({
-        hasUnread: selectedConversation.has_unread,
-        hasLatestMessage: Boolean(latestMessage),
-        latestMessageAt: selectedConversation.latest_message_at,
-        latestSender: latestMessage?.sender ?? null,
-      })
-    : "neutral";
-  const selectedDetailPreview = selectedConversation
-    ? buildConversationRowPreview({
+  const selectedDetailContext = selectedConversation
+    ? buildSelectedConversationContext({
         name: selectedConversation.name,
         latestMessageText: latestMessage?.message_text,
         latestSender: latestMessage?.sender ?? null,
-        state: selectedDetailState,
+        hasUnread: selectedConversation.has_unread,
+        hasLatestMessage: Boolean(latestMessage),
+        latestMessageAt: selectedConversation.latest_message_at,
         fallbackInterests: selectedCanonicalMatch?.interests,
         fallbackActivityLabel: selectedCanonicalMatch?.activity_label,
         fallbackChemistryLabel:
           selectedCanonicalMatch?.chemistry_label ?? selectedConversation.chemistry,
       })
-    : "";
+    : null;
+  const selectedDetailPreview = selectedDetailContext?.preview ?? "";
   const continuationGuide = useMemo(() => {
     if (!selectedConversation || !latestMessage) return null;
 
