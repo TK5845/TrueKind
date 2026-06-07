@@ -186,6 +186,49 @@ function hasDiscoverReadyProfile(profile: LocalProfile) {
   );
 }
 
+function getDiscoverEmptyState(input: {
+  profileReady: boolean;
+  candidateSource: DiscoverSource;
+}) {
+  if (input.candidateSource === "pending") {
+    return {
+      title: "Vi hämtar profiler just nu",
+      body:
+        "Discover väntar på inloggning och profilförslag. Om inget dyker upp kan du kontrollera profilen och försöka igen om en stund.",
+      actionHref: "/profile",
+      actionLabel: "Gå till profil",
+    };
+  }
+
+  if (!input.profileReady) {
+    return {
+      title: "Discover behöver lite mer om dig",
+      body:
+        "Fyll i namn, stad, bio eller några intressen så kan vi visa profiler med tydligare sammanhang och bättre startpunkter.",
+      actionHref: "/profile",
+      actionLabel: "Fyll i profil",
+    };
+  }
+
+  if (input.candidateSource === "backend") {
+    return {
+      title: "Inga nya profiler att visa just nu",
+      body:
+        "Det finns inga aktiva Discover-profiler för ditt testkonto just nu. Kom tillbaka snart eller uppdatera profilen om du vill bredda signalerna.",
+      actionHref: "/profile",
+      actionLabel: "Uppdatera profil",
+    };
+  }
+
+  return {
+    title: "Vi kunde inte hämta profiler just nu",
+    body:
+      "Discover föll tillbaka till ett tomt läge. Försök igen om en stund, eller kontrollera profilen innan nästa testpass.",
+    actionHref: "/profile",
+    actionLabel: "Gå till profil",
+  };
+}
+
 export default function DiscoverPage() {
   const [authState, setAuthState] = useState<AuthState>("unknown");
   const [profile, setProfile] = useState<LocalProfile>(emptyProfile);
@@ -424,7 +467,7 @@ export default function DiscoverPage() {
               color: "#181513",
             }}
           >
-            Logga in för att se profiler
+            Logga in för att se profiler som kan passa dig
           </h1>
 
           <p
@@ -436,7 +479,8 @@ export default function DiscoverPage() {
               maxWidth: 900,
             }}
           >
-            Du är utloggad. Logga in igen för att se din discover-vy.
+            Discover använder din profil och dina signaler för att visa förslag
+            med sammanhang. Logga in för att fortsätta där du var.
           </p>
 
           <div className="tk-action-row" style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
@@ -489,6 +533,10 @@ export default function DiscoverPage() {
     ? buildMatchInsights(lastLikedMatch)[0] ?? null
     : null;
   const profileReady = hasDiscoverReadyProfile(profile);
+  const discoverEmptyState = getDiscoverEmptyState({
+    profileReady,
+    candidateSource,
+  });
 
   return (
     <main className="tk-page-main" style={{ display: "grid", gap: 28 }}>
@@ -556,7 +604,7 @@ export default function DiscoverPage() {
                 color: "#6d625d",
               }}
             >
-              Profilen behöver lite mer innan Discover känns rätt
+              Fyll i lite mer så kan Discover bli mer relevant
             </div>
             <p
               style={{
@@ -567,9 +615,8 @@ export default function DiscoverPage() {
                 maxWidth: 760,
               }}
             >
-              Lägg gärna till namn, stad, bio och några intressen. Du kan titta
-              runt redan nu, men förslagen blir tydligare när profilen speglar
-              dig lite mer.
+              Lägg gärna till namn, stad, bio eller några intressen. Då kan
+              förslagen visa tydligare varför en profil kan passa dig.
             </p>
             <Link href="/profile" style={actionLinkStyle(true)}>
               Fyll i profil
@@ -919,7 +966,7 @@ export default function DiscoverPage() {
                   color: "#6d625d",
                 }}
               >
-                Inga förslag att visa just nu
+                {discoverEmptyState.title}
               </div>
               <p
                 style={{
@@ -929,11 +976,13 @@ export default function DiscoverPage() {
                   lineHeight: 1.7,
                 }}
               >
-                Inget är fel. Fyll i profilen eller kom tillbaka när fler
-                matchningar finns att utforska.
+                {discoverEmptyState.body}
               </p>
-              <Link href="/profile" style={actionLinkStyle(true)}>
-                Uppdatera profil
+              <Link
+                href={discoverEmptyState.actionHref}
+                style={actionLinkStyle(true)}
+              >
+                {discoverEmptyState.actionLabel}
               </Link>
             </div>
           )}
