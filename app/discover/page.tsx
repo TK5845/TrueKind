@@ -138,6 +138,17 @@ function pillStyle(dark = false) {
   };
 }
 
+function compactPillStyle() {
+  return {
+    ...pillStyle(),
+    padding: "8px 11px",
+    borderRadius: 12,
+    fontSize: 13,
+    lineHeight: 1.35,
+    maxWidth: "100%",
+  };
+}
+
 function actionLinkStyle(dark = false) {
   return {
     display: "inline-block",
@@ -175,6 +186,25 @@ function imagePlaceholderStyle() {
     color: "#6d625d",
     fontSize: 15,
     lineHeight: 1.6,
+  };
+}
+
+function discoverCardActionStyle(dark = false) {
+  return {
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    width: "100%",
+    minHeight: 44,
+    padding: "12px 14px",
+    background: dark ? "#111" : "white",
+    color: dark ? "white" : "#111",
+    borderRadius: 12,
+    border: dark ? "1px solid #111" : "1px solid rgba(208,198,191,0.95)",
+    textDecoration: "none",
+    fontWeight: 700,
+    textAlign: "center" as const,
+    lineHeight: 1.25,
   };
 }
 
@@ -764,8 +794,14 @@ export default function DiscoverPage() {
                 )}
               </div>
 
-              <div style={{ padding: 18, display: "grid", gap: 12 }}>
-                <div style={{ display: "grid", gap: 4 }}>
+              <div
+                style={{
+                  padding: "clamp(14px, 4vw, 18px)",
+                  display: "grid",
+                  gap: 13,
+                }}
+              >
+                <div style={{ display: "grid", gap: 5 }}>
                   <h3
                     style={{
                       margin: 0,
@@ -782,19 +818,23 @@ export default function DiscoverPage() {
                   </div>
                 </div>
 
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  <span style={pillStyle()}>{candidate.relevance_label}</span>
-                  <span style={pillStyle()}>{candidate.chemistry_label}</span>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  <span style={compactPillStyle()}>
+                    {candidate.relevance_label}
+                  </span>
+                  <span style={compactPillStyle()}>
+                    {candidate.chemistry_label}
+                  </span>
                 </div>
 
                 <div
                   style={{
                     background: "rgba(248,245,242,0.86)",
-                    borderRadius: 16,
+                    borderRadius: 14,
                     border: "1px solid rgba(231,223,218,0.95)",
-                    padding: "12px 14px",
+                    padding: "12px 13px",
                     display: "grid",
-                    gap: 4,
+                    gap: 5,
                   }}
                 >
                   <div
@@ -810,7 +850,7 @@ export default function DiscoverPage() {
                     style={{
                       color: "#2f2a27",
                       fontSize: 15,
-                      lineHeight: 1.5,
+                      lineHeight: 1.55,
                     }}
                   >
                     {cardContext}
@@ -861,39 +901,47 @@ export default function DiscoverPage() {
                   </div>
                 ) : null}
 
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  <span style={pillStyle()}>💫 {candidate.looking_for}</span>
-                  <span style={pillStyle()}>✨ {candidate.activity_label}</span>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  <span style={compactPillStyle()}>
+                    💫 {candidate.looking_for}
+                  </span>
+                  <span style={compactPillStyle()}>
+                    ✨ {candidate.activity_label}
+                  </span>
                 </div>
 
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                   {candidate.interests.map((item) => (
-                    <span key={item} style={pillStyle()}>
+                    <span key={item} style={compactPillStyle()}>
                       {item}
                     </span>
                   ))}
                 </div>
 
-                <div className="tk-action-row" style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                <div
+                  className="tk-action-row"
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(132px, 1fr))",
+                    gap: 8,
+                    alignItems: "stretch",
+                  }}
+                >
                   <button
                     type="button"
                     onClick={() => void handleLike(candidate)}
                     disabled={pendingLikeId === candidate.match_id}
                     style={{
-                      display: "inline-block",
-                      padding: "12px 14px",
+                      ...discoverCardActionStyle(!isLiked),
                       background: isLiked
                         ? "rgba(255,255,255,0.92)"
                         : "#111",
                       color: isLiked
                         ? "#111"
                         : "white",
-                      borderRadius: 12,
                       border: isLiked
                         ? "1px solid rgba(208,198,191,0.95)"
                         : "1px solid #111",
-                      textDecoration: "none",
-                      fontWeight: 700,
                       cursor:
                         pendingLikeId === candidate.match_id
                           ? "default"
@@ -914,30 +962,14 @@ export default function DiscoverPage() {
                     <>
                       <Link
                         href={`/matches?match=${candidate.match_id}`}
-                        style={{
-                          display: "inline-block",
-                          padding: "12px 14px",
-                          background: "#111",
-                          color: "white",
-                          borderRadius: 12,
-                          textDecoration: "none",
-                          fontWeight: 700,
-                        }}
+                        style={discoverCardActionStyle(true)}
                       >
                         Visa matchning
                       </Link>
 
                       <Link
                         href={`/messages?match=${candidate.match_id}`}
-                        style={{
-                          display: "inline-block",
-                          padding: "12px 14px",
-                          borderRadius: 12,
-                          border: "1px solid rgba(208,198,191,0.95)",
-                          textDecoration: "none",
-                          color: "#111",
-                          background: "white",
-                        }}
+                        style={discoverCardActionStyle()}
                       >
                         Öppna samtal
                       </Link>
@@ -945,8 +977,12 @@ export default function DiscoverPage() {
                   ) : (
                     <span
                       style={{
-                        ...pillStyle(),
+                        ...compactPillStyle(),
                         alignSelf: "center",
+                        gridColumn: "1 / -1",
+                        justifyContent: "center",
+                        textAlign: "center",
+                        width: "100%",
                       }}
                     >
                       Gilla för att lägga till i matchlistan
