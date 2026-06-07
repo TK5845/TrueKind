@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "smoke:rc": "node scripts/rc-smoke.mjs",
-    "test": "tsc -p tsconfig.test.json && node .test-build/tests/run-tests.js"
+    "test": "node scripts/run-tests.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.2",
