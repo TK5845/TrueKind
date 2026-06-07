@@ -22,6 +22,7 @@ import {
 } from "../lib/message-preview-model";
 import {
   DEMO_MATCHES,
+  buildDiscoverCardContext,
   buildMatchInsights,
   buildDiscoverCandidateViews,
   type CanonicalMatch,
@@ -677,6 +678,7 @@ export default function DiscoverPage() {
           {discoverCandidates.length ? (
             discoverCandidates.map((candidate) => {
               const isLiked = likedMatchIds.has(candidate.match_id);
+              const cardContext = buildDiscoverCardContext(profile, candidate);
 
               return (
             <article
@@ -736,6 +738,36 @@ export default function DiscoverPage() {
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                   <span style={pillStyle()}>{candidate.relevance_label}</span>
                   <span style={pillStyle()}>{candidate.chemistry_label}</span>
+                </div>
+
+                <div
+                  style={{
+                    background: "rgba(248,245,242,0.86)",
+                    borderRadius: 16,
+                    border: "1px solid rgba(231,223,218,0.95)",
+                    padding: "12px 14px",
+                    display: "grid",
+                    gap: 4,
+                  }}
+                >
+                  <div
+                    style={{
+                      color: "#6d625d",
+                      fontSize: 13,
+                      fontWeight: 700,
+                    }}
+                  >
+                    Varför den här?
+                  </div>
+                  <div
+                    style={{
+                      color: "#2f2a27",
+                      fontSize: 15,
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    {cardContext}
+                  </div>
                 </div>
 
                 <p

@@ -107,6 +107,19 @@ type MatchInsightSource = {
   latest_signal_text?: string;
 };
 
+type DiscoverCardContextProfile =
+  | Pick<
+      ProfileUiFields,
+      "interests" | "lookingFor" | "contactIntent"
+    >
+  | null
+  | undefined;
+
+type DiscoverCardContextSource = Pick<
+  MatchInsightSource,
+  "interests" | "activity_label" | "chemistry_label" | "looking_for" | "about_text"
+>;
+
 const DEMO_TIMESTAMP = "2026-01-01T00:00:00.000Z";
 
 export const DEMO_MATCHES: CanonicalMatch[] = [
@@ -306,6 +319,58 @@ function uniqueTextItems(items: string[]) {
 
 function formatLowercaseList(items: string[]) {
   return formatInsightList(items.map((item) => item.toLowerCase()));
+}
+
+export function buildDiscoverCardContext(
+  profile: DiscoverCardContextProfile,
+  candidate: DiscoverCardContextSource
+) {
+  const profileInterests = new Set(
+    (profile?.interests ?? []).map((item) => normalizeText(item)).filter(Boolean)
+  );
+  const candidateInterests = uniqueTextItems(candidate.interests ?? []).slice(0, 3);
+  const sharedInterests = candidateInterests.filter((item) =>
+    profileInterests.has(normalizeText(item))
+  );
+  const activity = cleanInsightText(candidate.activity_label);
+  const chemistryWords = uniqueTextItems(
+    cleanInsightText(candidate.chemistry_label)
+      .split(",")
+      .map((item) => item.trim())
+  ).slice(0, 2);
+  const lookingFor = cleanInsightText(candidate.looking_for);
+  const profileDirection = normalizeText(
+    profile?.lookingFor || profile?.contactIntent
+  );
+  const about = cleanInsightText(candidate.about_text);
+
+  if (sharedInterests.length) {
+    return `Gemensam ingång: ${formatLowercaseList(sharedInterests.slice(0, 2))}`;
+  }
+
+  if (candidateInterests.length) {
+    return `Bra startpunkt: fråga om ${candidateInterests[0].toLowerCase()}`;
+  }
+
+  if (activity) {
+    return `Bra startpunkt: fråga om ${activity.toLowerCase()}`;
+  }
+
+  if (chemistryWords.length) {
+    return `Passar din ton: ${formatLowercaseList(chemistryWords)}`;
+  }
+
+  if (lookingFor) {
+    return profileDirection && normalizeText(lookingFor).includes(profileDirection)
+      ? "Söker något som liknar din riktning"
+      : `Söker: ${lookingFor.toLowerCase()}`;
+  }
+
+  if (about) {
+    return "Profilen ger en personlig öppning";
+  }
+
+  return "En mjuk profil att utforska vidare";
 }
 
 export function buildFirstMessageGuide(

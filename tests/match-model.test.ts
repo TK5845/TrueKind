@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import {
   MATCH_STATUS,
   buildConversationContinuationGuide,
+  buildDiscoverCardContext,
   buildFirstMessageGuide,
   buildMatchInsights,
   isVisibleMatch,
@@ -35,6 +36,82 @@ describe("match lifecycle helpers", () => {
 });
 
 describe("match insight helpers", () => {
+  it("builds Discover card context from shared interests first", () => {
+    const context = buildDiscoverCardContext(
+      {
+        interests: ["musik", "samtal"],
+      },
+      {
+        interests: ["samtal", "musik", "närvaro"],
+        activity_label: "Konsert",
+        chemistry_label: "Varm, nyfiken",
+        looking_for: "Djupare kontakt",
+        about_text: "Tycker om djupa samtal.",
+      }
+    );
+
+    assert.equal(context, "Gemensam ingång: samtal och musik");
+  });
+
+  it("uses candidate interests before activity when no interest is shared", () => {
+    const context = buildDiscoverCardContext(
+      {
+        interests: ["matlagning"],
+      },
+      {
+        interests: ["musik", "samtal"],
+        activity_label: "Konsert",
+      }
+    );
+
+    assert.equal(context, "Bra startpunkt: fråga om musik");
+  });
+
+  it("falls through Discover card context signals in a warm order", () => {
+    assert.equal(
+      buildDiscoverCardContext(null, {
+        interests: [],
+        activity_label: "Bokprat",
+        chemistry_label: "Varm, nyfiken",
+      }),
+      "Bra startpunkt: fråga om bokprat"
+    );
+
+    assert.equal(
+      buildDiscoverCardContext(null, {
+        interests: [],
+        chemistry_label: "Lugn, nyfiken",
+      }),
+      "Passar din ton: lugn och nyfiken"
+    );
+
+    assert.equal(
+      buildDiscoverCardContext(
+        { lookingFor: "Djupare kontakt" },
+        {
+          interests: [],
+          looking_for: "Djupare kontakt",
+        }
+      ),
+      "Söker något som liknar din riktning"
+    );
+
+    assert.equal(
+      buildDiscoverCardContext(null, {
+        interests: [],
+        about_text: "Vill bygga något tryggt.",
+      }),
+      "Profilen ger en personlig öppning"
+    );
+
+    assert.equal(
+      buildDiscoverCardContext(null, {
+        interests: [],
+      }),
+      "En mjuk profil att utforska vidare"
+    );
+  });
+
   it("builds first-message guidance from existing match context", () => {
     const guide = buildFirstMessageGuide({
       name: "Anna",
