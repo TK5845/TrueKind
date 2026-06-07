@@ -304,13 +304,20 @@ function MessagesContent() {
     selectedId,
   ]);
 
+  const querySelectedConversation = queryMatchId
+    ? conversations.find((conversation) => conversation.id === queryMatchId) ??
+      null
+    : null;
+  const hasUnavailableQueryConversation = Boolean(
+    queryMatchId && authState === "signed-in" && !querySelectedConversation
+  );
   const selectedConversation = useMemo(() => {
-    if (!conversations.length) return null;
+    if (!conversations.length || hasUnavailableQueryConversation) return null;
     return (
       conversations.find((conversation) => conversation.id === selectedId) ??
       conversations[0]
     );
-  }, [conversations, selectedId]);
+  }, [conversations, hasUnavailableQueryConversation, selectedId]);
   const selectedCanonicalMatch = useMemo(() => {
     if (!selectedConversation) return null;
     return (
@@ -582,7 +589,9 @@ function MessagesContent() {
               color: "#181513",
             }}
           >
-            Inga samtal ännu
+            {hasUnavailableQueryConversation
+              ? "Samtalet går inte att visa"
+              : "Inga samtal ännu"}
           </h1>
           <p
             style={{
@@ -593,16 +602,30 @@ function MessagesContent() {
               maxWidth: 820,
             }}
           >
-            Det är helt okej. När du har matchningar och börjar skriva kommer
-            konversationerna att visas här.
+            {hasUnavailableQueryConversation
+              ? "Vi hittar inte det här samtalet just nu. Det kan ha dolts, flyttats eller saknas i den aktuella testdatan."
+              : "Det är helt okej. När du har matchningar och börjar skriva kommer konversationerna att visas här."}
           </p>
           <div className="tk-action-row" style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <Link href="/discover" style={actionLinkStyle(true)}>
-              Gå till Discover
-            </Link>
-            <Link href="/profile" style={actionLinkStyle()}>
-              Komplettera profil
-            </Link>
+            {hasUnavailableQueryConversation ? (
+              <>
+                <Link href="/messages" style={actionLinkStyle(true)}>
+                  Visa meddelanden
+                </Link>
+                <Link href="/matches" style={actionLinkStyle()}>
+                  Till matchningar
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link href="/discover" style={actionLinkStyle(true)}>
+                  Gå till Discover
+                </Link>
+                <Link href="/profile" style={actionLinkStyle()}>
+                  Komplettera profil
+                </Link>
+              </>
+            )}
           </div>
         </section>
       </main>

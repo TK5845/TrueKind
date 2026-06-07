@@ -234,8 +234,15 @@ function MatchesContent() {
     };
   }, []);
 
-  const selectedMatch =
-    matches.find((item) => item.match_id === selectedId) ?? matches[0] ?? null;
+  const querySelectedMatch = queryMatchId
+    ? matches.find((item) => item.match_id === queryMatchId) ?? null
+    : null;
+  const hasUnavailableQueryMatch = Boolean(
+    queryMatchId && authState === "signed-in" && !querySelectedMatch
+  );
+  const selectedMatch = hasUnavailableQueryMatch
+    ? null
+    : matches.find((item) => item.match_id === selectedId) ?? matches[0] ?? null;
   const selectedMatchInsights = selectedMatch
     ? buildMatchInsights(selectedMatch)
     : [];
@@ -606,15 +613,29 @@ function MatchesContent() {
           ) : (
             <div style={emptyStateStyle()}>
               <div style={{ fontSize: 15, fontWeight: 700, color: "#6d625d" }}>
-                Ingen matchning vald
+                {hasUnavailableQueryMatch
+                  ? "Matchningen går inte att visa"
+                  : "Ingen matchning vald"}
               </div>
               <div style={{ color: "#5f5752", fontSize: 17, lineHeight: 1.8 }}>
-                Gilla en profil i Discover först. Då sparas matchningen här och
-                du kan öppna samtalet direkt.
+                {hasUnavailableQueryMatch
+                  ? "Vi hittar inte den här matchningen just nu. Den kan ha dolts, flyttats eller saknas i den aktuella testdatan."
+                  : "Gilla en profil i Discover först. Då sparas matchningen här och du kan öppna samtalet direkt."}
               </div>
-              <Link href="/discover" style={actionLinkStyle(true)}>
-                Gå till Discover
-              </Link>
+              {hasUnavailableQueryMatch ? (
+                <div className="tk-action-row" style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  <Link href="/matches" style={actionLinkStyle(true)}>
+                    Visa mina matchningar
+                  </Link>
+                  <Link href="/discover" style={actionLinkStyle()}>
+                    Till discover
+                  </Link>
+                </div>
+              ) : (
+                <Link href="/discover" style={actionLinkStyle(true)}>
+                  Gå till Discover
+                </Link>
+              )}
             </div>
           )}
         </section>
