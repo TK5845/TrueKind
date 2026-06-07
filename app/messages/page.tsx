@@ -28,6 +28,7 @@ import {
 import { MessageRowAttentionBadges } from "../lib/message-row-badges";
 import { getConversationRowEmphasisStyle } from "../lib/message-row-style";
 import { ProfileImage } from "../lib/profile-image";
+import { resolveQuerySelection } from "../lib/query-selection";
 import { SelectedContextPanel } from "../lib/selected-context-panel";
 import {
   buildConversationContinuationGuide,
@@ -304,20 +305,19 @@ function MessagesContent() {
     selectedId,
   ]);
 
-  const querySelectedConversation = queryMatchId
-    ? conversations.find((conversation) => conversation.id === queryMatchId) ??
-      null
-    : null;
-  const hasUnavailableQueryConversation = Boolean(
-    queryMatchId && authState === "signed-in" && !querySelectedConversation
+  const selectedConversationState = useMemo(
+    () =>
+      resolveQuerySelection(conversations, {
+        queryId: queryMatchId,
+        selectedId,
+        shouldFlagUnavailableQuery: authState === "signed-in",
+        getId: (conversation) => conversation.id,
+      }),
+    [authState, conversations, queryMatchId, selectedId]
   );
-  const selectedConversation = useMemo(() => {
-    if (!conversations.length || hasUnavailableQueryConversation) return null;
-    return (
-      conversations.find((conversation) => conversation.id === selectedId) ??
-      conversations[0]
-    );
-  }, [conversations, hasUnavailableQueryConversation, selectedId]);
+  const hasUnavailableQueryConversation =
+    selectedConversationState.hasUnavailableQuery;
+  const selectedConversation = selectedConversationState.selectedItem;
   const selectedCanonicalMatch = useMemo(() => {
     if (!selectedConversation) return null;
     return (

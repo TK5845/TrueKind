@@ -25,6 +25,7 @@ import {
 import { MessageRowAttentionBadges } from "../lib/message-row-badges";
 import { getConversationRowEmphasisStyle } from "../lib/message-row-style";
 import { ProfileImage } from "../lib/profile-image";
+import { resolveQuerySelection } from "../lib/query-selection";
 import { SelectedContextPanel } from "../lib/selected-context-panel";
 import {
   buildMatchInsights,
@@ -234,15 +235,14 @@ function MatchesContent() {
     };
   }, []);
 
-  const querySelectedMatch = queryMatchId
-    ? matches.find((item) => item.match_id === queryMatchId) ?? null
-    : null;
-  const hasUnavailableQueryMatch = Boolean(
-    queryMatchId && authState === "signed-in" && !querySelectedMatch
-  );
-  const selectedMatch = hasUnavailableQueryMatch
-    ? null
-    : matches.find((item) => item.match_id === selectedId) ?? matches[0] ?? null;
+  const selectedMatchState = resolveQuerySelection(matches, {
+    queryId: queryMatchId,
+    selectedId,
+    shouldFlagUnavailableQuery: authState === "signed-in",
+    getId: (match) => match.match_id,
+  });
+  const hasUnavailableQueryMatch = selectedMatchState.hasUnavailableQuery;
+  const selectedMatch = selectedMatchState.selectedItem;
   const selectedMatchInsights = selectedMatch
     ? buildMatchInsights(selectedMatch)
     : [];

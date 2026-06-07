@@ -10,3 +10,4 @@ import "./message-row-style.test";
 import "./profile-image.test";
 import "./profile-media.test";
 import "./profile-model.test";
+import "./query-selection.test";
