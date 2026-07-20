@@ -8,6 +8,10 @@ Canonical flow remains:
 
 `discover -> /matches?match=id -> /messages?match=id`
 
+## Current Discover status
+
+Discover is ready for a focused RC verification pass covering the V12 card context, empty/readiness states, mobile card readability and the existing match/message handoff. Treat `DISCOVER_REGRESSION_CHECKLIST.md` as the primary manual checklist for this pass.
+
 ## What changed
 
 - Module 1: Discover cards now include relevance context with `Varför den här?` using `buildDiscoverCardContext(...)`.
@@ -46,3 +50,7 @@ V12 is ready for a focused Discover RC pass when the checklist confirms:
 - no mobile readability regressions on candidate cards.
 - `Varför den här?` is useful without crowding the card.
 - the canonical flow still reaches matches and messages with the same `match=id` handoff.
+
+## Recommended next step
+
+Run focused Discover RC verification with `DISCOVER_REGRESSION_CHECKLIST.md`, then record any findings in `INTERNAL_BUG_LOG.md` and the active RC handoff/release notes.
